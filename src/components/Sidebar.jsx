@@ -6,12 +6,14 @@ const NAV = [
   { id:'dashboard', label:'Dashboard',    icon:'dashboard' },
   { id:'new_order', label:'Nuevo Pedido', icon:'plus'      },
   { id:'orders',    label:'Pedidos',      icon:'orders'    },
+  { id:'accounts',  label:'Cuentas',      icon:'clients'   },
   { id:'clients',   label:'Clientes',     icon:'clients'   },
   { id:'catalog',   label:'Catálogo',     icon:'catalog'   },
 ]
 
 export default function Sidebar({ view, setView }) {
   const [pending, setPending] = useState(0)
+  const [alerts,  setAlerts]  = useState(0)
 
   useEffect(() => {
     supabase
@@ -19,6 +21,20 @@ export default function Sidebar({ view, setView }) {
       .select('id', { count:'exact', head:true })
       .eq('pagado_rafa', false)
       .then(({ count }) => setPending(count || 0))
+
+    supabase
+      .from('client_reorder_patterns')
+      .select('id, last_purchase, avg_days_reorder, product_code, product_durations(duration_days)')
+      .then(({ data }) => {
+        if (!data) return
+        const hoy = new Date()
+        const cnt = data.filter(p => {
+          const dias    = Math.floor((hoy - new Date(p.last_purchase)) / (1000*60*60*24))
+          const duracion = p.avg_days_reorder || p.product_durations?.duration_days || 30
+          return (dias / duracion) >= 0.8
+        }).length
+        setAlerts(cnt)
+      })
   }, [view])
 
   return (
@@ -28,14 +44,12 @@ export default function Sidebar({ view, setView }) {
       display:'flex', flexDirection:'column',
       padding:'0 0 20px', flexShrink:0,
     }}>
-      {/* Logo */}
       <div style={{ padding:'24px 20px 20px', borderBottom:'1px solid #1e3a1e' }}>
         <div style={{ color:'#4ade80', fontSize:11, letterSpacing:3, textTransform:'uppercase', marginBottom:4 }}>Amway</div>
         <div style={{ color:'#e8f5e9', fontSize:17, fontWeight:'bold', lineHeight:1.2 }}>Gestor de<br/>Pedidos</div>
         <div style={{ color:'#4ade80', fontSize:10, marginTop:4 }}>Costa Rica 2026</div>
       </div>
 
-      {/* Nav */}
       <nav style={{ flex:1, padding:'16px 12px' }}>
         {NAV.map(n => (
           <button key={n.id} onClick={() => setView(n.id)} style={{
@@ -51,6 +65,11 @@ export default function Sidebar({ view, setView }) {
             {n.id === 'orders' && pending > 0 && (
               <span style={{ background:'#dc2626', color:'white', borderRadius:99, fontSize:11, padding:'1px 7px', fontFamily:'sans-serif' }}>
                 {pending}
+              </span>
+            )}
+            {n.id === 'accounts' && alerts > 0 && (
+              <span style={{ background:'#dc2626', color:'white', borderRadius:99, fontSize:11, padding:'1px 7px', fontFamily:'sans-serif' }}>
+                {alerts}
               </span>
             )}
           </button>

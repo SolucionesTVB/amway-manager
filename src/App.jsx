@@ -6,6 +6,7 @@ import Orders    from './components/Orders.jsx'
 import NewOrder  from './components/NewOrder.jsx'
 import Clients   from './components/Clients.jsx'
 import Catalog   from './components/Catalog.jsx'
+import Accounts  from './components/Accounts.jsx'
 
 export default function App() {
   const [view,    setView]  = useState('dashboard')
@@ -23,6 +24,7 @@ export default function App() {
     new_order : NewOrder,
     clients   : Clients,
     catalog   : Catalog,
+    accounts  : Accounts,
   }[view] || Dashboard
 
   return (
