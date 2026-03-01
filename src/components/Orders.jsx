@@ -27,9 +27,9 @@ function buildWhatsAppMessage(orders) {
   orders.forEach(o=>{;(o.order_items||[]).forEach(it=>{if(pm[it.product_code]){pm[it.product_code].qty+=it.qty;pm[it.product_code].total+=it.total}else{pm[it.product_code]={name:it.product_name,code:it.product_code,qty:it.qty,price:it.unit_price,total:it.total}}})})
   const prods=Object.values(pm),totalIVAI=prods.reduce((s,p)=>s+p.total,0),calc=calcular(totalIVAI)
   const clientes=[...new Set(orders.map(o=>o.client_name))].join(', ')
-  let msg='🛒 *PEDIDO AMWAY - '+today+'*\n'+'━━━━━━━━━━━━━━━━━━━━\n'+'👥 Clientes: '+clientes+'\n'+'━━━━━━━━━━━━━━━━━━━━\n\n'+'*PRODUCTOS:*\n'
-  prods.forEach(p=>{msg+='• '+p.name+'\n'+'  Cod: '+p.code+' | Cant: '+p.qty+' | '+fmt(p.price)+' c/u\n'})
-  msg+='\n━━━━━━━━━━━━━━━━━━━━\n📋 *RESUMEN:*\nTotal pedido IVAI:   '+fmt(calc.totalIVAI)+'\nTotal sin impuesto:  '+fmt(calc.sinImpuesto)+'\nImpuestos (13%):     '+fmt(calc.impuestos)+'\n━━━━━━━━━━━━━━━━━━━━\n💵 *Total pagar a Rafa: '+fmt(calc.pagarRafa)+'*\n━━━━━━━━━━━━━━━━━━━━\n_Enviado desde Amway Manager CR_ ✅'
+  let msg='*PEDIDO AMWAY - '+today+'*\n'+'--------------------\n'+'Clientes: '+clientes+'\n'+'--------------------\n\n'+'*PRODUCTOS:*\n'
+  prods.forEach(p=>{msg+='- '+p.name+'\n'+'  Cod: '+p.code+' | Cant: '+p.qty+' | '+fmt(p.price)+' c/u\n'})
+  msg+='\n--------------------\n*RESUMEN:*\nTotal pedido IVAI:   '+fmt(calc.totalIVAI)+'\nTotal sin impuesto:  '+fmt(calc.sinImpuesto)+'\nImpuestos (13%):     '+fmt(calc.impuestos)+'\n--------------------\n*Total pagar a Rafa: '+fmt(calc.pagarRafa)+'*\n--------------------\nEnviado desde Amway Manager CR'
   return msg
 }
 function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing}) {
@@ -43,14 +43,14 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
         <div style={{flex:1,cursor:'pointer'}} onClick={()=>setExpanded(expanded===o.id?null:o.id)}>
           <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:5,flexWrap:'wrap'}}>
             <span style={{fontWeight:'bold',color:'#e8f5e9',fontSize:16}}>{o.client_name}</span>
-            <span style={{background:'#1a2e1a',color:'#4ade80',borderRadius:99,fontSize:11,padding:'1px 8px',fontFamily:'sans-serif'}}>{o.client_type==='empresario'?'🏪 Empresario':'👤 Cliente'}</span>
+            <span style={{background:'#1a2e1a',color:'#4ade80',borderRadius:99,fontSize:11,padding:'1px 8px',fontFamily:'sans-serif'}}>{o.client_type==='empresario'?'Empresario':'Cliente'}</span>
             <span style={{color:'#4a7a4a',fontSize:12,fontFamily:'sans-serif'}}>{o.period}</span>
-            {cerrado&&<span style={{background:'#14532d',color:'#4ade80',borderRadius:99,fontSize:11,padding:'1px 8px',fontFamily:'sans-serif'}}>✓ Cerrado</span>}
+            {cerrado&&<span style={{background:'#14532d',color:'#4ade80',borderRadius:99,fontSize:11,padding:'1px 8px',fontFamily:'sans-serif'}}>Cerrado</span>}
           </div>
           <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
             <span style={{color:'#4ade80',fontWeight:'bold',fontFamily:'sans-serif',fontSize:15}}>{fmt(o.total)}</span>
-            <Badge ok={o.pagado_rafa} yes="✓ Pagado" no="Pendiente pago"/>
-            <Badge ok={o.entregado_cliente} yes="✓ Entregado" no="Sin entregar"/>
+            <Badge ok={o.pagado_rafa} yes="Pagado" no="Pendiente pago"/>
+            <Badge ok={o.entregado_cliente} yes="Entregado" no="Sin entregar"/>
           </div>
         </div>
         <span onClick={()=>setExpanded(expanded===o.id?null:o.id)} style={{color:'#4a7a4a',transform:expanded===o.id?'rotate(180deg)':'none',transition:'0.2s',cursor:'pointer'}}>
@@ -64,10 +64,10 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
             <div key={it.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',background:idx%2===0?'#0d1710':'#111d13',borderRadius:8,marginBottom:6}}>
               <div style={{flex:1}}>
                 <div style={{color:'#e8f5e9',fontSize:14,fontWeight:'bold',marginBottom:2}}>{it.product_name}</div>
-                <div style={{color:'#4a7a4a',fontSize:12,fontFamily:'sans-serif'}}>Código: {it.product_code}</div>
+                <div style={{color:'#4a7a4a',fontSize:12,fontFamily:'sans-serif'}}>Codigo: {it.product_code}</div>
               </div>
               <div style={{textAlign:'right',fontFamily:'sans-serif'}}>
-                <div style={{color:'#9dc89a',fontSize:13}}>{fmt(it.unit_price)} × {it.qty}</div>
+                <div style={{color:'#9dc89a',fontSize:13}}>{fmt(it.unit_price)} x {it.qty}</div>
                 <div style={{color:'#4ade80',fontSize:15,fontWeight:'bold'}}>{fmt(it.total)}</div>
               </div>
             </div>
@@ -99,10 +99,10 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
           </div>
           <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
             <div style={{display:'flex',gap:8}}>
-              <button onClick={()=>setEditing(o)} style={{display:'flex',alignItems:'center',gap:6,background:'#166534',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>✏️ Editar pedido</button>
-              <button onClick={()=>openWhatsApp([o])} style={{display:'flex',alignItems:'center',gap:6,background:'#25D366',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>📱 Enviar a Amway</button>
+              <button onClick={()=>setEditing(o)} style={{display:'flex',alignItems:'center',gap:6,background:'#166534',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Editar pedido</button>
+              <button onClick={()=>openWhatsApp([o])} style={{display:'flex',alignItems:'center',gap:6,background:'#25D366',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Enviar a Amway</button>
             </div>
-            <button onClick={()=>deleteOrder(o.id)} style={{...btn.danger,fontSize:13,padding:'8px 16px'}}>🗑 Eliminar</button>
+            <button onClick={()=>deleteOrder(o.id)} style={{...btn.danger,fontSize:13,padding:'8px 16px'}}>Eliminar</button>
           </div>
         </div>
       )}
@@ -122,7 +122,7 @@ export default function Orders({showToast}) {
   useEffect(()=>{load()},[load])
   const toggleSelect=(id)=>setSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n})
   const toggle=async(field,id,current)=>{await supabase.from('orders').update({[field]:!current}).eq('id',id);setOrders(prev=>prev.map(o=>o.id===id?{...o,[field]:!current}:o));showToast('Estado actualizado')}
-  const deleteOrder=async(id)=>{if(!confirm('¿Eliminar este pedido?'))return;await supabase.from('orders').delete().eq('id',id);setOrders(prev=>prev.filter(o=>o.id!==id));setExpanded(null);setSelected(prev=>{const n=new Set(prev);n.delete(id);return n});showToast('Pedido eliminado')}
+  const deleteOrder=async(id)=>{if(!confirm('Eliminar este pedido?'))return;await supabase.from('orders').delete().eq('id',id);setOrders(prev=>prev.filter(o=>o.id!==id));setExpanded(null);setSelected(prev=>{const n=new Set(prev);n.delete(id);return n});showToast('Pedido eliminado')}
   const openWhatsApp=(ordersToSend)=>{if(ordersToSend.length===0){showToast('Selecciona al menos un pedido','error');return};const msg=buildWhatsAppMessage(ordersToSend);window.open('https://wa.me/'+AMWAY_WHATSAPP+'?text='+encodeURIComponent(msg),'_blank')}
   const sendSelected=()=>openWhatsApp(orders.filter(o=>selected.has(o.id)))
   const activos=orders.filter(o=>!esCerrado(o))
@@ -135,7 +135,7 @@ export default function Orders({showToast}) {
   return (
     <div style={{padding:28}} className="fade-in">
       <h1 style={{fontSize:24,color:'#e8f5e9',margin:'0 0 4px'}}>Pedidos</h1>
-      <p style={{color:'#6b9e6b',margin:'0 0 20px',fontFamily:'sans-serif',fontSize:14}}>Marcá los pedidos con el checkbox y envialos a Amway por WhatsApp</p>
+      <p style={{color:'#6b9e6b',margin:'0 0 20px',fontFamily:'sans-serif',fontSize:14}}>Marca los pedidos con el checkbox y envialos a Amway por WhatsApp</p>
       {calcSel?(
         <div style={{background:'#111d13',border:'1px solid #2d4a2d',borderRadius:12,padding:18,marginBottom:20}}>
           <div style={{color:'#9dc89a',fontSize:12,fontFamily:'sans-serif',fontWeight:700,marginBottom:12,textTransform:'uppercase',letterSpacing:1}}>Resumen — {selected.size} pedido{selected.size!==1?'s':''} seleccionado{selected.size!==1?'s':''}</div>
@@ -147,13 +147,13 @@ export default function Orders({showToast}) {
               </div>
             ))}
           </div>
-          <button onClick={sendSelected} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#25D366',color:'white',border:'none',borderRadius:10,padding:'14px',cursor:'pointer',fontSize:16,fontFamily:'sans-serif',fontWeight:700,boxShadow:'0 4px 16px rgba(37,211,102,0.3)'}}>
-            📱 Enviar pedidos seleccionados a Amway por WhatsApp
+          <button onClick={sendSelected} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#25D366',color:'white',border:'none',borderRadius:10,padding:'14px',cursor:'pointer',fontSize:16,fontFamily:'sans-serif',fontWeight:700}}>
+            Enviar pedidos seleccionados a Amway por WhatsApp
           </button>
         </div>
       ):(
         <div style={{background:'#111d13',border:'2px dashed #2d4a2d',borderRadius:12,padding:16,marginBottom:20,textAlign:'center'}}>
-          <div style={{color:'#4a7a4a',fontFamily:'sans-serif',fontSize:14}}>☑️ Marcá los pedidos con el checkbox para ver el resumen y enviarlos a Amway</div>
+          <div style={{color:'#4a7a4a',fontFamily:'sans-serif',fontSize:14}}>Marca los pedidos con el checkbox para ver el resumen y enviarlos a Amway</div>
         </div>
       )}
       <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap',alignItems:'center'}}>
@@ -174,7 +174,7 @@ export default function Orders({showToast}) {
         <div>
           <button onClick={()=>setVerArchivados(!verArchivados)} style={{display:'flex',alignItems:'center',gap:8,width:'100%',background:'#0d1710',border:'1px solid #1e3a1e',borderRadius:10,padding:'12px 16px',cursor:'pointer',color:'#4a7a4a',fontFamily:'sans-serif',fontSize:14,marginBottom:verArchivados?10:0}}>
             <span style={{transform:verArchivados?'rotate(180deg)':'none',transition:'0.2s'}}><Icon name="chevron" size={16}/></span>
-            📦 Pedidos cerrados / archivados ({archivados.length})
+            Pedidos cerrados / archivados ({archivados.length})
           </button>
           {verArchivados&&<div style={{display:'flex',flexDirection:'column',gap:10}} className="slide-in">{archivados.map(o=><PedidoCard key={o.id} o={o} {...cardProps}/>)}</div>}
         </div>
