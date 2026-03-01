@@ -3,16 +3,30 @@ import { supabase } from '../supabaseClient.js'
 import { CATALOG, CATEGORIES, fmt } from '../catalog.js'
 import { Icon, Card, PageHeader, btn, inputSt, labelSt } from './ui.jsx'
 
+function calcular(totalIVAI) {
+  const sinImpuesto = totalIVAI / 1.13
+  const impuestos   = totalIVAI - sinImpuesto
+  const ganancia    = sinImpuesto * 0.30
+  const pagarRafa   = (sinImpuesto - ganancia) + impuestos
+  return {
+    totalIVAI  : Math.round(totalIVAI),
+    sinImpuesto: Math.round(sinImpuesto),
+    impuestos  : Math.round(impuestos),
+    ganancia   : Math.round(ganancia),
+    pagarRafa  : Math.round(pagarRafa),
+  }
+}
+
 export default function NewOrder({ setView, showToast }) {
-  const [clientName,  setClientName]  = useState('')
-  const [clientType,  setClientType]  = useState('cliente')
-  const [period,      setPeriod]      = useState(() => new Date().toISOString().slice(0, 7))
-  const [items,       setItems]       = useState([])
-  const [catFilter,   setCatFilter]   = useState('Todos')
-  const [search,      setSearch]      = useState('')
-  const [qtys,        setQtys]        = useState({})
-  const [saving,      setSaving]      = useState(false)
-  const [clients,     setClients]     = useState([])
+  const [clientName, setClientName] = useState('')
+  const [clientType, setClientType] = useState('cliente')
+  const [period,     setPeriod]     = useState(() => new Date().toISOString().slice(0, 7))
+  const [items,      setItems]      = useState([])
+  const [catFilter,  setCatFilter]  = useState('Todos')
+  const [search,     setSearch]     = useState('')
+  const [qtys,       setQtys]       = useState({})
+  const [saving,     setSaving]     = useState(false)
+  const [clients,    setClients]    = useState([])
 
   useEffect(() => {
     supabase.from('clients').select('name').order('name').then(({ data }) => {
@@ -50,49 +64,33 @@ export default function NewOrder({ setView, showToast }) {
   }
 
   const total = items.reduce((s, i) => s + i.total, 0)
+  const calc  = total > 0 ? calcular(total) : null
 
   const handleSave = async () => {
-    if (!clientName.trim())  { showToast('Ingresá el nombre del cliente', 'error'); return }
-    if (items.length === 0)  { showToast('Agregá al menos un producto', 'error');   return }
+    if (!clientName.trim()) { showToast('Ingresá el nombre del cliente', 'error'); return }
+    if (items.length === 0) { showToast('Agregá al menos un producto', 'error');   return }
     setSaving(true)
 
-    // Upsert client
     let clientId = null
     const { data: existing } = await supabase
-      .from('clients')
-      .select('id')
-      .ilike('name', clientName.trim())
-      .single()
+      .from('clients').select('id').ilike('name', clientName.trim()).single()
 
     if (existing) {
       clientId = existing.id
     } else {
       const { data: newClient } = await supabase
-        .from('clients')
-        .insert({ name: clientName.trim(), type: clientType })
-        .select('id')
-        .single()
+        .from('clients').insert({ name: clientName.trim(), type: clientType }).select('id').single()
       clientId = newClient?.id
     }
 
-    // Insert order
     const { data: order, error } = await supabase
       .from('orders')
-      .insert({
-        client_id   : clientId,
-        client_name : clientName.trim(),
-        client_type : clientType,
-        period,
-        total,
-      })
-      .select('id')
-      .single()
+      .insert({ client_id: clientId, client_name: clientName.trim(), client_type: clientType, period, total })
+      .select('id').single()
 
     if (error || !order) { showToast('Error al guardar el pedido', 'error'); setSaving(false); return }
 
-    // Insert items
-    const orderItems = items.map(i => ({ ...i, order_id: order.id }))
-    await supabase.from('order_items').insert(orderItems)
+    await supabase.from('order_items').insert(items.map(i => ({ ...i, order_id: order.id })))
 
     showToast('✅ Pedido guardado correctamente')
     setView('orders')
@@ -149,7 +147,7 @@ export default function NewOrder({ setView, showToast }) {
           <Card style={{ padding:18 }}>
             <div style={{ fontWeight:'bold', color:'#e8f5e9', marginBottom:14 }}>Datos del Pedido</div>
 
-            <label style={labelSt}>Nombre del cliente / distribuidor</label>
+            <label style={labelSt}>Nombre del cliente</label>
             <input value={clientName} onChange={e => setClientName(e.target.value)}
               list="client-list" placeholder="Ej: María, Johan, Shirley..."
               style={inputSt}/>
@@ -173,7 +171,7 @@ export default function NewOrder({ setView, showToast }) {
             <input type="month" value={period} onChange={e => setPeriod(e.target.value)} style={inputSt}/>
           </Card>
 
-          {/* Items seleccionados */}
+          {/* Productos seleccionados */}
           <Card>
             <div style={{ padding:'12px 16px', borderBottom:'1px solid #1e3a1e', color:'#e8f5e9', fontWeight:'bold', fontSize:14 }}>
               Productos ({items.length})
@@ -198,13 +196,36 @@ export default function NewOrder({ setView, showToast }) {
                 </button>
               </div>
             ))}
-            {items.length > 0 && (
-              <div style={{ padding:'12px 16px', background:'#0d1710', display:'flex', justifyContent:'space-between' }}>
-                <span style={{ color:'#9dc89a', fontFamily:'sans-serif', fontSize:13 }}>TOTAL</span>
-                <span style={{ color:'#4ade80', fontWeight:'bold', fontSize:18 }}>{fmt(total)}</span>
-              </div>
-            )}
           </Card>
+
+          {/* Resumen financiero — igual que en el Excel */}
+          {calc && (
+            <Card style={{ overflow:'hidden' }}>
+              <div style={{ padding:'12px 16px', borderBottom:'1px solid #1e3a1e', color:'#9dc89a', fontWeight:700, fontSize:12, textTransform:'uppercase', letterSpacing:1 }}>
+                Resumen financiero
+              </div>
+              {[
+                { label:'Total pedido IVAI',  value: calc.totalIVAI,   color:'#9dc89a', bold:false },
+                { label:'Total sin impuesto', value: calc.sinImpuesto, color:'#9dc89a', bold:false },
+                { label:'Impuestos (13%)',    value: calc.impuestos,   color:'#f59e0b', bold:false },
+                { label:'Ganancia (30%)',     value: calc.ganancia,    color:'#34d399', bold:false },
+                { label:'Total pagar a Rafa', value: calc.pagarRafa,   color:'#4ade80', bold:true  },
+              ].map((row, i) => (
+                <div key={i} style={{
+                  display:'flex', justifyContent:'space-between', padding:'10px 16px',
+                  background: row.bold ? '#1a4a1a' : (i % 2 === 0 ? '#0d1710' : '#111d13'),
+                  borderTop: i > 0 ? '1px solid #1e3a1e' : 'none',
+                }}>
+                  <span style={{ color: row.bold ? '#e8f5e9':'#9dc89a', fontFamily:'sans-serif', fontSize:13, fontWeight: row.bold ? 700:400 }}>
+                    {row.label}
+                  </span>
+                  <span style={{ color: row.color, fontFamily:'sans-serif', fontSize: row.bold ? 17:14, fontWeight: row.bold ? 700:600 }}>
+                    {fmt(row.value)}
+                  </span>
+                </div>
+              ))}
+            </Card>
+          )}
 
           <button onClick={handleSave} disabled={saving} style={{ ...btn.base, width:'100%', padding:'14px', fontSize:16, opacity: saving ? 0.6 : 1 }}>
             {saving ? '⏳ Guardando...' : '💾 Guardar Pedido'}
