@@ -1,28 +1,62 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { fmt } from '../catalog.js'
-import { Icon, Badge, Card, PageHeader, Spinner, btn, inputSt } from './ui.jsx'
+import { Icon, Badge, Card, Spinner, btn, inputSt } from './ui.jsx'
+
+const AMWAY_WHATSAPP = '50670507023'
 
 const FILTERS = [
   { v:'todos',             l:'Todos' },
-  { v:'pendiente_pago',    l:'💰 Sin cobrar' },
-  { v:'pendiente_entrega', l:'📦 Sin entregar' },
-  { v:'completo',          l:'✅ Completados' },
+  { v:'pendiente_pago',    l:'\u{1F4B0} Sin cobrar' },
+  { v:'pendiente_entrega', l:'\u{1F4E6} Sin entregar' },
+  { v:'completo',          l:'\u2705 Completados' },
 ]
 
 const STATUS_FIELDS = [
-  { field:'entregado_tv',       label:'Entregado a TV'       },
-  { field:'entregado_cliente',  label:'Entregado al cliente' },
-  { field:'pagado_rafa',        label:'Pagado a mí (Rafa)'   },
-  { field:'pagado_tv',          label:'Pagado a TV'          },
+  { field:'entregado_tv',      label:'Entregado a TV'       },
+  { field:'entregado_cliente', label:'Entregado al cliente' },
+  { field:'pagado_rafa',       label:'Pagado a m\u00ed (Rafa)'   },
+  { field:'pagado_tv',         label:'Pagado a TV'          },
 ]
 
+function buildWhatsAppMessage(orders) {
+  const today = new Date().toLocaleDateString('es-CR', { day:'2-digit', month:'long', year:'numeric' })
+  const productMap = {}
+  orders.forEach(o => {
+    ;(o.order_items || []).forEach(it => {
+      if (productMap[it.product_code]) {
+        productMap[it.product_code].qty   += it.qty
+        productMap[it.product_code].total += it.total
+      } else {
+        productMap[it.product_code] = { name:it.product_name, code:it.product_code, qty:it.qty, price:it.unit_price, total:it.total }
+      }
+    })
+  })
+  const productos    = Object.values(productMap)
+  const totalGeneral = productos.reduce((s, p) => s + p.total, 0)
+  const clientesList = [...new Set(orders.map(o => o.client_name))].join(', ')
+  let msg = `\u{1F6D2} *PEDIDO AMWAY - ${today}*\n`
+  msg += `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n`
+  msg += `\u{1F465} Clientes: ${clientesList}\n`
+  msg += `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n`
+  msg += `*PRODUCTOS:*\n`
+  productos.forEach(p => {
+    msg += `\u2022 ${p.name}\n`
+    msg += `  C\u00f3digo: ${p.code} | Cant: ${p.qty} | ${fmt(p.price)} c/u\n`
+  })
+  msg += `\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n`
+  msg += `\u{1F4B0} *TOTAL: ${fmt(totalGeneral)}*\n`
+  msg += `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n`
+  msg += `_Enviado desde Amway Manager CR_ \u2705`
+  return msg
+}
+
 export default function Orders({ showToast }) {
-  const [orders,   setOrders]  = useState([])
-  const [loading,  setLoading] = useState(true)
-  const [filter,   setFilter]  = useState('todos')
-  const [search,   setSearch]  = useState('')
-  const [expanded, setExpanded]= useState(null)
+  const [orders,   setOrders]   = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [filter,   setFilter]   = useState('todos')
+  const [search,   setSearch]   = useState('')
+  const [expanded, setExpanded] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -39,16 +73,36 @@ export default function Orders({ showToast }) {
   const toggle = async (field, id, current) => {
     await supabase.from('orders').update({ [field]: !current }).eq('id', id)
     setOrders(prev => prev.map(o => o.id === id ? { ...o, [field]: !current } : o))
-    showToast('Estado actualizado ✓')
+    showToast('Estado actualizado \u2713')
   }
 
   const deleteOrder = async (id) => {
-    if (!confirm('¿Eliminar este pedido? Esta acción no se puede deshacer.')) return
+    if (!confirm('\u00bfEliminar este pedido?')) return
     await supabase.from('orders').delete().eq('id', id)
     setOrders(prev => prev.filter(o => o.id !== id))
     setExpanded(null)
     showToast('Pedido eliminado')
   }
+
+  const openWhatsApp = (ordersToSend) => {
+    const msg = buildWhatsAppMessage(ordersToSend)
+    window.open(`https://wa.me/${AMWAY_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank')
+  }
+
+  const sendAllToday = () => {
+    const todayOrders = orders.filter(o =>
+      new Date(o.created_at).toDateString() === new Date().toDateString() && !o.entregado_tv
+    )
+    if (todayOrders.length === 0) {
+      showToast('No hay pedidos de hoy pendientes de enviar', 'error')
+      return
+    }
+    openWhatsApp(todayOrders)
+  }
+
+  const pendientesHoy = orders.filter(o =>
+    new Date(o.created_at).toDateString() === new Date().toDateString() && !o.entregado_tv
+  ).length
 
   const visible = orders
     .filter(o => {
@@ -61,10 +115,33 @@ export default function Orders({ showToast }) {
 
   return (
     <div style={{ padding:28 }} className="fade-in">
-      <PageHeader title="Pedidos" subtitle="Controlá entregas y pagos de cada cliente" />
 
-      {/* Filtros */}
-      <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap', alignItems:'center' }}>
+      <div style={{ marginBottom:20 }}>
+        <h1 style={{ fontSize:24, color:'#e8f5e9', margin:'0 0 4px' }}>Pedidos</h1>
+        <p style={{ color:'#6b9e6b', margin:'0 0 16px', fontFamily:'sans-serif', fontSize:14 }}>
+          Control\u00e1 entregas y pagos de cada cliente
+        </p>
+
+        <button onClick={sendAllToday} style={{
+          width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:10,
+          background:'#25D366', color:'white', border:'none',
+          borderRadius:10, padding:'14px 20px', cursor:'pointer',
+          fontSize:16, fontFamily:'sans-serif', fontWeight:700,
+          boxShadow:'0 4px 16px rgba(37,211,102,0.3)', marginBottom:4,
+        }}>
+          {'\u{1F4F1}'} Enviar pedido del d\u00eda a Amway por WhatsApp
+          {pendientesHoy > 0 && (
+            <span style={{ background:'rgba(0,0,0,0.25)', borderRadius:99, fontSize:13, padding:'2px 10px' }}>
+              {pendientesHoy} pendiente{pendientesHoy !== 1 ? 's' : ''}
+            </span>
+          )}
+        </button>
+        <p style={{ color:'#4a7a4a', fontSize:11, fontFamily:'sans-serif', margin:0 }}>
+          Agrupa todos los pedidos de hoy que no se han marcado como "Entregado a TV"
+        </p>
+      </div>
+
+      <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
         {FILTERS.map(f => (
           <button key={f.v} onClick={() => setFilter(f.v)} style={{
             padding:'6px 14px', borderRadius:99, border:'none', cursor:'pointer',
@@ -81,7 +158,6 @@ export default function Orders({ showToast }) {
       </div>
 
       {loading && <Spinner />}
-
       {!loading && visible.length === 0 && (
         <div style={{ textAlign:'center', padding:50, color:'#4a7a4a', fontFamily:'sans-serif' }}>
           No hay pedidos con ese filtro
@@ -91,24 +167,20 @@ export default function Orders({ showToast }) {
       <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
         {visible.map(o => (
           <Card key={o.id}>
-            {/* Header del pedido */}
             <div style={{ padding:'14px 18px', display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}
               onClick={() => setExpanded(expanded === o.id ? null : o.id)}>
               <div style={{ flex:1 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5, flexWrap:'wrap' }}>
                   <span style={{ fontWeight:'bold', color:'#e8f5e9', fontSize:16 }}>{o.client_name}</span>
                   <span style={{ background:'#1a2e1a', color:'#4ade80', borderRadius:99, fontSize:11, padding:'1px 8px', fontFamily:'sans-serif' }}>
-                    {o.client_type === 'empresario' ? '🏪 Empresario' : '👤 Cliente'}
+                    {o.client_type === 'empresario' ? '\u{1F3EA} Empresario' : '\u{1F464} Cliente'}
                   </span>
                   <span style={{ color:'#4a7a4a', fontSize:12, fontFamily:'sans-serif' }}>{o.period}</span>
                 </div>
                 <div style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'center' }}>
-                  <span style={{ color:'#4ade80', fontWeight:'bold', fontFamily:'sans-serif' }}>{fmt(o.total)}</span>
-                  <span style={{ color:'#6b9e6b', fontSize:12, fontFamily:'sans-serif' }}>
-                    {(o.order_items || []).length} producto{(o.order_items || []).length !== 1 ? 's' : ''}
-                  </span>
-                  <Badge ok={o.pagado_rafa}       yes="✓ Pagado"    no="⏳ Sin cobrar"/>
-                  <Badge ok={o.entregado_cliente} yes="✓ Entregado" no="📦 Sin entregar"/>
+                  <span style={{ color:'#4ade80', fontWeight:'bold', fontFamily:'sans-serif', fontSize:15 }}>{fmt(o.total)}</span>
+                  <Badge ok={o.pagado_rafa}       yes="\u2713 Pagado"    no="\u23f3 Sin cobrar"/>
+                  <Badge ok={o.entregado_cliente} yes="\u2713 Entregado" no="\u{1F4E6} Sin entregar"/>
                 </div>
               </div>
               <span style={{ color:'#4a7a4a', transform: expanded === o.id ? 'rotate(180deg)' : 'none', transition:'0.2s' }}>
@@ -116,37 +188,43 @@ export default function Orders({ showToast }) {
               </span>
             </div>
 
-            {/* Detalle expandido */}
             {expanded === o.id && (
-              <div style={{ borderTop:'1px solid #1e3a1e', padding:'16px 18px' }} className="slide-in">
+              <div style={{ borderTop:'1px solid #1e3a1e', padding:'18px' }} className="slide-in">
 
-                {/* Tabla de productos */}
-                <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:16 }}>
-                  <thead>
-                    <tr style={{ background:'#0d1710' }}>
-                      {['Producto','P. Unitario','Cant','Total'].map(h => (
-                        <th key={h} style={{ padding:'8px 12px', textAlign:'left', color:'#6b9e6b', fontSize:12, fontFamily:'sans-serif', fontWeight:600 }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(o.order_items || []).map(it => (
-                      <tr key={it.id} style={{ borderTop:'1px solid #141f14' }}>
-                        <td style={{ padding:'8px 12px', color:'#e8f5e9', fontSize:13 }}>{it.product_name}</td>
-                        <td style={{ padding:'8px 12px', color:'#9dc89a', fontSize:13, fontFamily:'sans-serif' }}>{fmt(it.unit_price)}</td>
-                        <td style={{ padding:'8px 12px', color:'#9dc89a', fontSize:13, fontFamily:'sans-serif' }}>{it.qty}</td>
-                        <td style={{ padding:'8px 12px', color:'#4ade80', fontWeight:'bold', fontSize:13, fontFamily:'sans-serif' }}>{fmt(it.total)}</td>
-                      </tr>
-                    ))}
-                    <tr style={{ borderTop:'2px solid #2d4a2d' }}>
-                      <td colSpan={3} style={{ padding:'10px 12px', fontWeight:'bold', color:'#e8f5e9', fontFamily:'sans-serif' }}>TOTAL</td>
-                      <td style={{ padding:'10px 12px', fontWeight:'bold', color:'#4ade80', fontSize:16, fontFamily:'sans-serif' }}>{fmt(o.total)}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div style={{ color:'#9dc89a', fontSize:12, fontFamily:'sans-serif', fontWeight:700, marginBottom:10, textTransform:'uppercase', letterSpacing:1 }}>
+                  Productos del pedido
+                </div>
 
-                {/* Toggle de estados */}
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))', gap:10, marginBottom:14 }}>
+                {(o.order_items || []).map((it, idx) => (
+                  <div key={it.id} style={{
+                    display:'flex', alignItems:'center', gap:12,
+                    padding:'10px 14px',
+                    background: idx % 2 === 0 ? '#0d1710' : '#111d13',
+                    borderRadius:8, marginBottom:6,
+                  }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ color:'#e8f5e9', fontSize:14, fontWeight:'bold', marginBottom:2 }}>{it.product_name}</div>
+                      <div style={{ color:'#4a7a4a', fontSize:12, fontFamily:'sans-serif' }}>C\u00f3digo: {it.product_code}</div>
+                    </div>
+                    <div style={{ textAlign:'right', fontFamily:'sans-serif' }}>
+                      <div style={{ color:'#9dc89a', fontSize:13 }}>{fmt(it.unit_price)} \u00d7 {it.qty}</div>
+                      <div style={{ color:'#4ade80', fontSize:15, fontWeight:'bold' }}>{fmt(it.total)}</div>
+                    </div>
+                  </div>
+                ))}
+
+                <div style={{
+                  display:'flex', justifyContent:'space-between', alignItems:'center',
+                  padding:'12px 14px', background:'#1a4a1a', borderRadius:8, marginTop:8, marginBottom:16,
+                }}>
+                  <span style={{ color:'#e8f5e9', fontWeight:'bold', fontFamily:'sans-serif', fontSize:15 }}>TOTAL DEL PEDIDO</span>
+                  <span style={{ color:'#4ade80', fontWeight:'bold', fontSize:20 }}>{fmt(o.total)}</span>
+                </div>
+
+                <div style={{ color:'#9dc89a', fontSize:12, fontFamily:'sans-serif', fontWeight:700, marginBottom:10, textTransform:'uppercase', letterSpacing:1 }}>
+                  Estados
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))', gap:10, marginBottom:16 }}>
                   {STATUS_FIELDS.map(({ field, label }) => (
                     <button key={field} onClick={() => toggle(field, o.id, o[field])} style={{
                       display:'flex', alignItems:'center', gap:8, padding:'10px 14px',
@@ -168,9 +246,17 @@ export default function Orders({ showToast }) {
                   ))}
                 </div>
 
-                <div style={{ display:'flex', justifyContent:'flex-end' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+                  <button onClick={() => openWhatsApp([o])} style={{
+                    display:'flex', alignItems:'center', gap:6,
+                    background:'#25D366', color:'white', border:'none',
+                    borderRadius:8, padding:'9px 16px', cursor:'pointer',
+                    fontSize:13, fontFamily:'sans-serif', fontWeight:600,
+                  }}>
+                    {'\u{1F4F1}'} Enviar solo este pedido a Amway
+                  </button>
                   <button onClick={() => deleteOrder(o.id)} style={{ ...btn.danger, fontSize:13, padding:'8px 16px' }}>
-                    🗑 Eliminar pedido
+                    {'\u{1F5D1}'} Eliminar pedido
                   </button>
                 </div>
               </div>
