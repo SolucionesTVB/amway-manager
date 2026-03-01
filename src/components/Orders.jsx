@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { fmt } from '../catalog.js'
 import { Icon, Badge, Card, Spinner, btn, inputSt } from './ui.jsx'
+import EditOrder from './EditOrder.jsx'
 
 const AMWAY_WHATSAPP = '50670507023'
 
@@ -183,7 +184,7 @@ function PedidoCard({ o, expanded, setExpanded, selected, toggleSelect, toggle, 
               color:'white', border:'none', borderRadius:8, padding:'9px 16px',
               cursor:'pointer', fontSize:13, fontFamily:'sans-serif', fontWeight:600,
             }}>
-              📱 Enviar solo este pedido
+              ✏️ Editar pedido
             </button>
             <button onClick={() => deleteOrder(o.id)} style={{ ...btn.danger, fontSize:13, padding:'8px 16px' }}>
               🗑 Eliminar pedido
@@ -351,6 +352,16 @@ export default function Orders({ showToast }) {
             </div>
           )}
         </div>
+      )}
+    </div>
+ 
+      {editing && (
+        <EditOrder
+          order={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load() }}
+          showToast={showToast}
+        />
       )}
     </div>
   )
