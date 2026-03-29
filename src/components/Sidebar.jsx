@@ -24,7 +24,7 @@ export default function Sidebar({ view, setView }) {
 
     supabase
       .from('client_reorder_patterns')
-      .select('id, last_purchase, avg_days_reorder, product_code, product_durations(duration_days)')
+      .select('id, last_purchase, avg_days_reorder, product_code')
       .then(({ data }) => {
         if (!data) return
         const hoy = new Date()

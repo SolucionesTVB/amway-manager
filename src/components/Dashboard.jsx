@@ -14,7 +14,7 @@ export default function Dashboard({ setView }) {
         .from('orders')
         .select('id, client_name, period, total, pagado_rafa, entregado_cliente, created_at')
         .order('created_at', { ascending: false })
-        .limit(100)
+        
 
       if (!orders) { setLoading(false); return }
 
