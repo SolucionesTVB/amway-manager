@@ -25,9 +25,9 @@ export default function Dashboard({ setView }) {
       setStats({
         total          : orders.length,
         pendingPayCount: pendingPay.length,
-        pendingPayAmt  : pendingPay.reduce((s,o) => s + o.total, 0),
+        pendingPayAmt  : pendingPay.reduce((s,o) => s + parseFloat(o.total||0), 0),
         pendingDeliver : pendingDeliver.length,
-        revenue        : paid.reduce((s,o) => s + o.total, 0),
+        revenue        : paid.reduce((s,o) => s + parseFloat(o.total||0), 0),
       })
       setRecent(orders.slice(0, 6))
       setLoading(false)

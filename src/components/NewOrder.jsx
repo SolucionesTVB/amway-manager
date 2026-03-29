@@ -63,7 +63,7 @@ export default function NewOrder({ setView, showToast }) {
     ))
   }
 
-  const total = items.reduce((s, i) => s + i.total, 0)
+  const total = items.reduce((s, i) => s + parseFloat(i.total||0), 0)
   const calc  = total > 0 ? calcular(total) : null
 
   const handleSave = async () => {
