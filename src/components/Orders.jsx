@@ -17,15 +17,32 @@ const STATUS_FIELDS = [
   { field:'pagado_tv',         label:'Pagado a TV'         },
 ]
 function esCerrado(o) { return o.entregado_tv && o.entregado_cliente && o.pagado_rafa && o.pagado_tv }
-function calcular(t) {
-  const s=t/1.13,im=t-s,g=s*0.30,r=(s-g)+im
-  return { totalIVAI:Math.round(t),sinImpuesto:Math.round(s),impuestos:Math.round(im),ganancia:Math.round(g),pagarRafa:Math.round(r) }
+
+function num(v) {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+function calcular(valor) {
+  const t = num(valor)
+  const s = t / 1.13
+  const im = t - s
+  const g = s * 0.30
+  const r = (s - g) + im
+
+  return {
+    totalIVAI: Math.round(t),
+    sinImpuesto: Math.round(s),
+    impuestos: Math.round(im),
+    ganancia: Math.round(g),
+    pagarRafa: Math.round(r)
+  }
 }
 function buildWhatsAppMessage(orders) {
   const today=new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'})
   const pm={}
-  orders.forEach(o=>{;(o.order_items||[]).forEach(it=>{if(pm[it.product_code]){pm[it.product_code].qty+=it.qty;pm[it.product_code].total+=it.total}else{pm[it.product_code]={name:it.product_name,code:it.product_code,qty:it.qty,price:it.unit_price,total:it.total}}})})
-  const prods=Object.values(pm),totalIVAI=prods.reduce((s,p)=>s+p.total,0),calc=calcular(totalIVAI)
+  orders.forEach(o=>{;(o.order_items||[]).forEach(it=>{const qty=num(it.qty), total=num(it.total), price=num(it.unit_price); if(pm[it.product_code]){pm[it.product_code].qty+=qty;pm[it.product_code].total+=total}else{pm[it.product_code]={name:it.product_name,code:it.product_code,qty:qty,price:price,total:total}}})})
+  const prods=Object.values(pm),totalIVAI=prods.reduce((s,p)=>s+num(p.total),0),calc=calcular(totalIVAI)
   const clientes=[...new Set(orders.map(o=>o.client_name))].join(', ')
   let msg='*PEDIDO AMWAY - '+today+'*\n'+'--------------------\n'+'Clientes: '+clientes+'\n'+'--------------------\n\n'+'*PRODUCTOS:*\n'
   prods.forEach(p=>{msg+='- '+p.name+'\n'+'  Cod: '+p.code+' | Cant: '+p.qty+' | '+fmt(p.price)+' c/u\n'})
