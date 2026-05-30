@@ -33,7 +33,7 @@ function buildWhatsAppMessage(orders) {
   return msg
 }
 function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing}) {
-  const calc=calcular(o.total),isSelected=selected.has(o.id),cerrado=esCerrado(o)
+  const calc=calcular(num(o.total)),isSelected=selected.has(o.id),cerrado=esCerrado(o)
   return (
     <Card style={{border:isSelected?'1px solid #4ade80':'1px solid #1e3a1e',opacity:cerrado?0.85:1}}>
       <div style={{padding:'14px 18px',display:'flex',alignItems:'center',gap:12}}>
@@ -129,7 +129,7 @@ export default function Orders({showToast}) {
   const archivados=orders.filter(o=>esCerrado(o))
   const visible=activos.filter(o=>{if(filter==='pendiente_pago')return !o.pagado_rafa;if(filter==='pendiente_entrega')return !o.entregado_cliente;return true}).filter(o=>search===''||o.client_name.toLowerCase().includes(search.toLowerCase()))
   const selectedOrders=orders.filter(o=>selected.has(o.id))
-  const totalSelIVAI=selectedOrders.reduce((s,o)=>s+o.total,0)
+  const totalSelIVAI=selectedOrders.reduce((s,o)=>s+num(o.total),0)
   const calcSel=totalSelIVAI>0?calcular(totalSelIVAI):null
   const cardProps={expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing}
   return (
