@@ -39,14 +39,69 @@ function calcular(valor) {
   }
 }
 function buildWhatsAppMessage(orders) {
-  const today=new Date().toLocaleDateString('es-CR',{day:'2-digit',month:'long',year:'numeric'})
-  const pm={}
-  orders.forEach(o=>{;(o.order_items||[]).forEach(it=>{const qty=num(it.qty), total=num(it.total), price=num(it.unit_price); if(pm[it.product_code]){pm[it.product_code].qty+=qty;pm[it.product_code].total+=total}else{pm[it.product_code]={name:it.product_name,code:it.product_code,qty:qty,price:price,total:total}}})})
-  const prods=Object.values(pm),totalIVAI=prods.reduce((s,p)=>s+num(p.total),0),calc=calcular(totalIVAI)
-  const clientes=[...new Set(orders.map(o=>o.client_name))].join(', ')
-  let msg='*PEDIDO AMWAY - '+today+'*\n'+'--------------------\n'+'Clientes: '+clientes+'\n'+'--------------------\n\n'+'*PRODUCTOS:*\n'
-  prods.forEach(p=>{msg+='- '+p.name+'\n'+'  Cod: '+p.code+' | Cant: '+p.qty+' | '+fmt(p.price)+' c/u\n'})
-  msg+='\n--------------------\n*RESUMEN:*\nTotal pedido IVAI:   '+fmt(calc.totalIVAI)+'\nTotal sin impuesto:  '+fmt(calc.sinImpuesto)+'\nImpuestos (13%):     '+fmt(calc.impuestos)+'\n--------------------\n*Total pagar a Rafa: '+fmt(calc.pagarRafa)+'*\n--------------------\nEnviado desde Amway Manager CR'
+  const today = new Date().toLocaleDateString('es-CR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  })
+
+  const pm = {}
+
+  orders.forEach(o => {
+    ;(o.order_items || []).forEach(it => {
+      const qty = num(it.qty)
+      const total = num(it.total)
+      const price = num(it.unit_price)
+
+      if (pm[it.product_code]) {
+        pm[it.product_code].qty += qty
+        pm[it.product_code].total += total
+      } else {
+        pm[it.product_code] = {
+          name: it.product_name,
+          code: it.product_code,
+          qty,
+          price,
+          total
+        }
+      }
+    })
+  })
+
+  const prods = Object.values(pm).sort((a, b) => a.name.localeCompare(b.name))
+  const totalIVAI = prods.reduce((s, p) => s + num(p.total), 0)
+  const calc = calcular(totalIVAI)
+  const clientes = [...new Set(orders.map(o => o.client_name).filter(Boolean))].join(', ')
+
+  let msg = ''
+  msg += '*PEDIDO AMWAY CR*\n'
+  msg += 'Fecha: ' + today + '\n'
+  if (clientes) msg += 'Clientes: ' + clientes + '\n'
+  msg += 'Pedidos incluidos: ' + orders.length + '\n'
+  msg += '\n'
+  msg += '*PRODUCTOS*\n\n'
+
+  prods.forEach((p, idx) => {
+    msg += `${idx + 1}. *${p.name}*\n`
+    msg += `   Código: ${p.code}\n`
+    msg += `   Cantidad: ${p.qty}\n`
+    msg += `   Precio unitario: ${fmt(p.price)}\n`
+    msg += `   Subtotal: ${fmt(p.total)}\n`
+    if (idx < prods.length - 1) msg += '\n'
+  })
+
+  msg += '\n\n'
+  msg += '*RESUMEN*\n'
+  msg += `Total pedido IVAI: ${fmt(calc.totalIVAI)}\n`
+  msg += `Subtotal sin impuesto: ${fmt(calc.sinImpuesto)}\n`
+  msg += `Impuestos (13%): ${fmt(calc.impuestos)}\n`
+  msg += `Ganancia (30%): ${fmt(calc.ganancia)}\n`
+  msg += `*Total pagar a Rafa: ${fmt(calc.pagarRafa)}*\n`
+  msg += '\n'
+  msg += 'Por favor preparar este pedido. Gracias.\n'
+  msg += '\n'
+  msg += '_Enviado desde Amway Manager CR_'
+
   return msg
 }
 function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing}) {
