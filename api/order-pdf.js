@@ -24,9 +24,9 @@ function pdfPages(pages) {
   const xref='xref\n0 '+objs.length+'\n0000000000 65535 f \n'+offsets.slice(1).map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')+'trailer\n<< /Size '+objs.length+' /Root '+catalog+' 0 R >>\nstartxref\n'+start+'\n%%EOF';
   parts.push(Buffer.from(xref,'ascii'));return Buffer.concat(parts);
 }
-function buildPages(orders,summary,group) {
+function buildPages(orders,summary,group,mode='rafa') {
   const pages=[];let text='',y=0;
-  const start=()=>{text='0.14 0.33 0.21 rg\n';y=797;text+=line('AMWAY MANAGER CR',45,y,19,true);text+='0 0 0 rg\n';y-=25;text+=line('PEDIDO PARA PREPARACION',45,y,12,true);y-=23;text+=line('Referencia: '+group.slice(0,8).toUpperCase()+'   Fecha: '+new Date().toLocaleDateString('es-CR'),45,y,10);y-=26;text+='0.7 0.7 0.7 RG 45 '+y+' m 550 '+y+' l S\n';y-=18};
+  const start=()=>{text='0.14 0.33 0.21 rg\n';y=797;text+=line('AMWAY MANAGER CR',45,y,19,true);text+='0 0 0 rg\n';y-=25;text+=line(mode==='cliente'?'CUENTA DEL CLIENTE':'PEDIDO PARA RAFA',45,y,12,true);y-=23;text+=line('Referencia: '+group.slice(0,8).toUpperCase()+'   Fecha: '+new Date().toLocaleDateString('es-CR'),45,y,10);y-=26;text+='0.7 0.7 0.7 RG 45 '+y+' m 550 '+y+' l S\n';y-=18};
   const next=()=>{pages.push(text);start()};
   const row=(description,right,{bold=false,indent=0}={})=>{if(y<76)next();text+=line(description,45+indent,y,10,bold);text+=line(right,425,y,10,bold);y-=18};
   start();
@@ -35,18 +35,15 @@ function buildPages(orders,summary,group) {
     text+=line('Cliente: '+o.client_name+'  |  Periodo: '+o.period,45,y,11,true);y-=22;
     for(const item of o.order_items) {
       const desc=(item.product_name||item.product_code||'Producto').slice(0,50);
-      row(desc+'  x'+item.qty,money(item.total),{indent:8});
+      row(desc+'  x'+item.qty,money(mode==='cliente'?item.total:Number(item.total)*(1-0.30/1.13)),{indent:8});
     }
     y-=8;
   }
   if(y<180)next();
   text+='0.7 0.7 0.7 RG 45 '+y+' m 550 '+y+' l S\n';y-=25;
-  row('Total del pedido, IVA incluido',money(summary.total),{bold:true});
-  row('Impuesto incluido (13%)',money(summary.iva));
-  y-=10;
-  row('NETO A PAGAR A AMWAY',money(summary.neto),{bold:true});
+  if(mode==='cliente') {row('TOTAL A PAGAR POR EL CLIENTE',money(summary.total),{bold:true});} else {row('NETO A PAGAR A RAFA',money(summary.neto),{bold:true});}
   y-=20;
-  text+=line('Preparar el pedido segun los productos y cantidades indicados.',45,y,9);
+  text+=line(mode==='cliente'?'Detalle de productos y total de su pedido.':'Preparar el pedido segun los productos y cantidades indicados.',45,y,9);
   pages.push(text);
   return pages;
 }
@@ -65,6 +62,8 @@ export default async function handler(req,res) {
   if(req.method!=='POST')return res.status(405).json({error:'Método no permitido'});
   const ids=req.body?.orderIds;
   if(!Array.isArray(ids)||ids.length<1||ids.length>35||ids.some(x=>typeof x!=='string'||!/^[\da-f]{8}-([\da-f]{4}-){3}[\da-f]{12}$/i.test(x)))return res.status(400).json({error:'Selección inválida'});
+  const mode=req.body?.mode==='cliente'?'cliente':'rafa';
+  if(mode==='cliente' && ids.length!==1)return res.status(400).json({error:'El documento del cliente corresponde a un solo pedido'});
   const unique=[...new Set(ids)];
   try {
     const orders=await sql.query('SELECT id,client_name,period,total FROM orders WHERE id=ANY($1::uuid[]) ORDER BY created_at',[unique]);
@@ -77,8 +76,8 @@ export default async function handler(req,res) {
       total+=t;iva+=tax;neto+=pay;
     }
     const group=randomUUID();
-    const buffer=pdfPages(buildPages(orders,{total,iva,neto},group));
-    for(const snap of snapshots){
+    const buffer=pdfPages(buildPages(orders,{total,iva,neto},group,mode));
+    if(mode==='rafa')for(const snap of snapshots){
       await sql.query('INSERT INTO amway_order_reports (order_id,report_group,total_ivai,subtotal_sin_iva,impuesto,ganancia,neto_pagar,items) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)',[snap.id,group,snap.total,snap.subtotal,snap.iva,snap.ganancia,snap.neto,JSON.stringify(snap.items)]);
     }
     res.setHeader('Content-Type','application/pdf');
