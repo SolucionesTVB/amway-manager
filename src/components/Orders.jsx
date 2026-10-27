@@ -104,7 +104,15 @@ function buildWhatsAppMessage(orders) {
 
   return msg
 }
-function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing}) {
+function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing,downloadPdf}) {
+  const [history,setHistory]=useState(null)
+  const [historyLoading,setHistoryLoading]=useState(false)
+  const loadHistory=async()=>{
+    setHistoryLoading(true)
+    try {const r=await fetch('/api/order-pdf?orderId='+encodeURIComponent(o.id));const j=await r.json();setHistory(j.data||[])}
+    catch(e){setHistory([])}
+    finally{setHistoryLoading(false)}
+  }
   const calc=calcular(num(o.total)),isSelected=selected.has(o.id),cerrado=esCerrado(o)
   return (
     <Card style={{border:isSelected?'1px solid #4ade80':'1px solid #1e3a1e',opacity:cerrado?0.85:1}}>
@@ -169,9 +177,20 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
               </button>
             ))}
           </div>
+          <div style={{marginBottom:14,padding:12,border:'1px solid #2d4a2d',borderRadius:8}}>
+            <button onClick={loadHistory} style={{background:'transparent',border:'none',color:'#9dc89a',fontWeight:700,cursor:'pointer',padding:0}}>
+              {historyLoading?'Cargando historial...':'Ver historial de PDF y ganancia'}
+            </button>
+            {history?.length===0&&<div style={{fontSize:12,color:'#6b9e6b',marginTop:8}}>Aún no se ha generado un PDF para este pedido.</div>}
+            {history?.map(h=><div key={h.id} style={{marginTop:10,paddingTop:9,borderTop:'1px solid #2d4a2d',fontSize:12,color:'#9dc89a',fontFamily:'sans-serif'}}>
+              <div>{new Date(h.created_at).toLocaleString('es-CR')} · Referencia {h.report_group.slice(0,8).toUpperCase()}</div>
+              <div>Venta: <strong>{fmt(h.total_ivai)}</strong> · Ganancia guardada: <strong>{fmt(h.ganancia)}</strong> · Neto Amway: <strong>{fmt(h.neto_pagar)}</strong></div>
+            </div>)}
+          </div>
           <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
             <div style={{display:'flex',gap:8}}>
               <button onClick={()=>setEditing(o)} style={{display:'flex',alignItems:'center',gap:6,background:'#166534',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Editar pedido</button>
+              <button onClick={()=>downloadPdf([o])} style={{background:'#1e40af',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:600}}>PDF Amway</button>
               <button onClick={()=>openWhatsApp([o])} style={{display:'flex',alignItems:'center',gap:6,background:'#25D366',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Enviar a Amway</button>
             </div>
             <button onClick={()=>deleteOrder(o.id)} style={{...btn.danger,fontSize:13,padding:'8px 16px'}}>Eliminar</button>
@@ -196,6 +215,17 @@ export default function Orders({showToast}) {
   const toggle=async(field,id,current)=>{await supabase.from('orders').update({[field]:!current}).eq('id',id);setOrders(prev=>prev.map(o=>o.id===id?{...o,[field]:!current}:o));showToast('Estado actualizado')}
   const deleteOrder=async(id)=>{if(!confirm('Eliminar este pedido?'))return;await supabase.from('orders').delete().eq('id',id);setOrders(prev=>prev.filter(o=>o.id!==id));setExpanded(null);setSelected(prev=>{const n=new Set(prev);n.delete(id);return n});showToast('Pedido eliminado')}
   const openWhatsApp=(ordersToSend)=>{if(ordersToSend.length===0){showToast('Selecciona al menos un pedido','error');return};const msg=buildWhatsAppMessage(ordersToSend);window.open('https://wa.me/'+AMWAY_WHATSAPP+'?text='+encodeURIComponent(msg),'_blank')}
+  const downloadPdf=async(ordersToSend)=>{
+    if(ordersToSend.length===0){showToast('Selecciona al menos un pedido','error');return}
+    try{
+      const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:ordersToSend.map(o=>o.id)})})
+      if(!response.ok){const error=await response.json();throw new Error(error.error||'Error creando PDF')}
+      const blob=await response.blob();const url=URL.createObjectURL(blob)
+      const a=document.createElement('a');a.href=url;a.download='pedido-amway-'+new Date().toISOString().slice(0,10)+'.pdf';document.body.appendChild(a);a.click();a.remove()
+      setTimeout(()=>URL.revokeObjectURL(url),5000)
+      showToast('PDF generado y cálculo guardado en historial')
+    }catch(error){showToast(error.message||'Error al generar PDF','error')}
+  }
   const sendSelected=()=>openWhatsApp(orders.filter(o=>selected.has(o.id)))
   const activos=orders.filter(o=>!esCerrado(o))
   const archivados=orders.filter(o=>esCerrado(o))
@@ -203,7 +233,7 @@ export default function Orders({showToast}) {
   const selectedOrders=orders.filter(o=>selected.has(o.id))
   const totalSelIVAI=selectedOrders.reduce((s,o)=>s+num(o.total),0)
   const calcSel=totalSelIVAI>0?calcular(totalSelIVAI):null
-  const cardProps={expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing}
+  const cardProps={expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing,downloadPdf}
   return (
     <div style={{padding:28}} className="fade-in">
       <h1 style={{fontSize:24,color:'#e8f5e9',margin:'0 0 4px'}}>Pedidos</h1>
@@ -219,6 +249,7 @@ export default function Orders({showToast}) {
               </div>
             ))}
           </div>
+          <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1e40af',border:'none',borderRadius:10,color:'white',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Generar PDF para Amway (sin ganancia)</button>
           <button onClick={sendSelected} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#25D366',color:'white',border:'none',borderRadius:10,padding:'14px',cursor:'pointer',fontSize:16,fontFamily:'sans-serif',fontWeight:700}}>
             Enviar pedidos seleccionados a Amway por WhatsApp
           </button>
