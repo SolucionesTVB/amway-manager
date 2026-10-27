@@ -1,3 +1,19 @@
+async function pngFromResponse(response){
+  const svg=await response.blob()
+  const url=URL.createObjectURL(svg)
+  try{
+    const img=new Image()
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(new Error('No se pudo dibujar el pedido'));img.src=url})
+    const canvas=document.createElement('canvas')
+    canvas.width=img.naturalWidth;canvas.height=img.naturalHeight
+    const ctx=canvas.getContext('2d')
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height)
+    ctx.drawImage(img,0,0)
+    const png=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('No se pudo crear PNG')),'image/png'))
+    return png
+  }finally{URL.revokeObjectURL(url)}
+}
+
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../supabaseClient.js'
 import { fmt } from '../catalog.js'
@@ -219,7 +235,7 @@ export default function Orders({showToast}) {
     try{
       const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:ordersToSend.map(o=>o.id)})})
       if(!response.ok){const error=await response.json();throw new Error(error.error||'Error creando imagen')}
-      const blob=await response.blob();const url=URL.createObjectURL(blob)
+      const blob=await pngFromResponse(response);const url=URL.createObjectURL(blob)
       const a=document.createElement('a');a.href=url;a.download='pedido-amway-'+new Date().toISOString().slice(0,10)+'.png';document.body.appendChild(a);a.click();a.remove()
       setTimeout(()=>URL.revokeObjectURL(url),5000)
       showToast('Imagen generada y cálculo guardado en historial')
@@ -230,9 +246,9 @@ export default function Orders({showToast}) {
     try{
       const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:ordersToSend.map(o=>o.id)})})
       if(!response.ok){const j=await response.json();throw new Error(j.error||'Error creando documento')}
-      const blob=await response.blob()
+      const blob=await pngFromResponse(response)
       const file=new File([blob],'pedido-amway-'+new Date().toISOString().slice(0,10)+'.png',{type:'image/png'})
-      if(/Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.share && navigator.canShare?.({files:[file]})){
+      if(navigator.share && navigator.canShare?.({files:[file]})){
         await navigator.share({files:[file],title:'Pedido Amway',text:'Pedido de productos con neto a pagar'})
         showToast('Documento preparado para compartir')
       }else{
@@ -246,8 +262,8 @@ export default function Orders({showToast}) {
     try{
       const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:[o.id],mode:'cliente'})})
       if(!response.ok)throw Error((await response.json()).error||'Error al crear el documento')
-      const file=new File([await response.blob()],'pedido-'+o.client_name.replace(/[^a-zA-Z0-9]/g,'-')+'.png',{type:'image/png'})
-      if(/Android|iPhone|iPad/i.test(navigator.userAgent)&&navigator.share&&navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Pedido de '+o.client_name})
+      const file=new File([await pngFromResponse(response)],'pedido-'+o.client_name.replace(/[^a-zA-Z0-9]/g,'-')+'.png',{type:'image/png'})
+      if(navigator.share&&navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Pedido de '+o.client_name})
       else {const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);showToast('Imagen descargada para compartir con el cliente')}
     }catch(e){if(e.name!=='AbortError')showToast(e.message||'Error del documento','error')}
   }
