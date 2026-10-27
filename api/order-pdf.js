@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { randomUUID } from 'node:crypto';
-import sharp from 'sharp';
+
 const xml = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 function imageRows(orders,summary,mode) {
   const rows=[];
@@ -44,7 +44,7 @@ async function pngReport(orders,summary,mode,group){
     const foot=height-94;
     const total=offset+batch.length>=rows.length;
     const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'"><rect width="100%" height="100%" fill="white"/><rect width="1080" height="150" fill="#163a25"/><g font-family="DejaVu Sans, Arial, sans-serif"><text x="64" y="65" font-size="35" font-weight="bold" fill="white">AMWAY MANAGER CR</text><text x="64" y="113" font-size="25" fill="#d2ead7">'+(mode==='cliente'?'PEDIDO DEL CLIENTE':'PEDIDO PARA RAFA')+'</text><text x="64" y="185" font-size="20" fill="#506958">Referencia: '+xml(group.slice(0,8).toUpperCase())+' · '+xml(new Date().toLocaleDateString('es-CR'))+'</text>'+content+(total?'<line x1="64" y1="'+(foot-32)+'" x2="1016" y2="'+(foot-32)+'" stroke="#c8d9cb" stroke-width="2"/><text x="64" y="'+(foot+12)+'" font-size="25" font-weight="bold" fill="#163a25">'+(mode==='cliente'?'TOTAL A PAGAR':'NETO A PAGAR A RAFA')+'</text><text x="1016" y="'+(foot+12)+'" font-size="29" text-anchor="end" font-weight="bold" fill="#163a25">'+xml(money(mode==='cliente'?summary.total:summary.neto))+'</text>':'')+'</g></svg>';
-    pages.push(await sharp(Buffer.from(svg)).png().toBuffer());
+    pages.push(Buffer.from(svg,'utf8'));
   }
   if(pages.length!==1)throw new Error('El pedido excede una imagen. Divida la selección en grupos más pequeños.');
   return pages[0];
@@ -156,8 +156,8 @@ export default async function handler(req,res) {
     if(mode==='rafa')for(const snap of snapshots){
       await sql.query('INSERT INTO amway_order_reports (order_id,report_group,total_ivai,subtotal_sin_iva,impuesto,ganancia,neto_pagar,items) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)',[snap.id,group,snap.total,snap.subtotal,snap.iva,snap.ganancia,snap.neto,JSON.stringify(snap.items)]);
     }
-    res.setHeader('Content-Type','image/png');
-    res.setHeader('Content-Disposition','attachment; filename="pedido-amway-'+group.slice(0,8)+'.png"');
+    res.setHeader('Content-Type','image/svg+xml; charset=utf-8');
+    res.setHeader('Content-Disposition','attachment; filename="pedido-amway-'+group.slice(0,8)+'.svg"');
     return res.status(200).send(buffer);
   } catch(e){console.error('PDF Amway:',e);return res.status(500).json({error:'No se pudo crear el PDF'});}
 }
