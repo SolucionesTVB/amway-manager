@@ -257,6 +257,14 @@ export default function Orders({showToast}) {
   const selectedOrders=orders.filter(o=>selected.has(o.id))
   const totalSelIVAI=selectedOrders.reduce((s,o)=>s+num(o.total),0)
   const calcSel=totalSelIVAI>0?calcular(totalSelIVAI):null
+  const productosRafa=Object.values(selectedOrders.flatMap(o=>o.order_items||[]).reduce((acc,it)=>{
+    const key=String(it.product_code)+'|'+String(it.unit_price)
+    if(!acc[key])acc[key]={code:it.product_code,name:it.product_name,qty:0,neto:0}
+    acc[key].qty+=num(it.qty)
+    acc[key].neto+=num(it.total)*(1-0.30/1.13)
+    return acc
+  },{})).sort((a,b)=>a.name.localeCompare(b.name))
+
   const cardProps={expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,setEditing,downloadPdf,sharePdf,clientPdf}
   return (
     <div style={{padding:28}} className="fade-in">
@@ -270,6 +278,17 @@ export default function Orders({showToast}) {
               <strong style={{color:'#d8f8e1'}}>1. Envío de pedido a Rafa</strong>
               <div style={{color:'#87ba9b',fontSize:12,marginTop:6}}>Productos y precio neto a pagar</div>
               <div style={{fontSize:24,fontWeight:700,color:'#4ade80',margin:'12px 0'}}>{fmt(calcSel.pagarRafa)}</div>
+              <div style={{borderTop:'1px solid #236b45',paddingTop:10,marginBottom:14}}>
+                <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 35px 76px 80px',gap:5,color:'#87ba9b',fontSize:10,fontWeight:700,marginBottom:8}}>
+                  <span>Producto</span><span>Cant.</span><span>Precio neto</span><span>Subtotal</span>
+                </div>
+                {productosRafa.map(p=><div key={p.code+'-'+p.neto} style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 35px 76px 80px',gap:5,alignItems:'center',padding:'8px 0',borderTop:'1px solid #1d4532',fontFamily:'sans-serif',fontSize:11,color:'#d8f8e1'}}>
+                  <span style={{overflowWrap:'anywhere'}}>{p.name}<div style={{fontSize:10,color:'#87ba9b'}}>{p.code}</div></span>
+                  <span>{p.qty}</span>
+                  <span>{fmt(p.qty?p.neto/p.qty:0)}</span>
+                  <strong>{fmt(p.neto)}</strong>
+                </div>)}
+              </div>
               <button onClick={()=>sharePdf(selectedOrders)} style={{width:'100%',background:'#25D366',color:'#103b24',border:0,borderRadius:8,padding:11,fontWeight:700,cursor:'pointer'}}>Compartir con Rafa</button>
               <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1a3d29',color:'#dcfce7',border:'1px solid #236b45',borderRadius:8,padding:10,marginTop:8,cursor:'pointer'}}>Descargar PDF de Rafa</button>
             </div>
