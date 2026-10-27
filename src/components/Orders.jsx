@@ -278,12 +278,12 @@ export default function Orders({showToast}) {
               <strong style={{color:'#d8f8e1'}}>1. Envío de pedido a Rafa</strong>
               <div style={{color:'#87ba9b',fontSize:12,marginTop:6}}>Productos y precio neto a pagar</div>
               <div style={{fontSize:24,fontWeight:700,color:'#4ade80',margin:'12px 0'}}>{fmt(calcSel.pagarRafa)}</div>
-              <div style={{borderTop:'1px solid #236b45',paddingTop:10,marginBottom:14}}>
-                <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 35px 76px 80px',gap:5,color:'#87ba9b',fontSize:10,fontWeight:700,marginBottom:8}}>
+              <div style={{borderTop:'1px solid #236b45',paddingTop:10,marginBottom:14,overflowX:'auto'}}>
+                <div style={{display:'grid',gridTemplateColumns:'minmax(160px,1fr) 50px 90px 100px',gap:5,color:'#87ba9b',fontSize:10,fontWeight:700,marginBottom:8}}>
                   <span>Producto</span><span>Cant.</span><span>Precio neto</span><span>Subtotal</span>
                 </div>
-                {productosRafa.map(p=><div key={p.code+'-'+p.neto} style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) 35px 76px 80px',gap:5,alignItems:'center',padding:'8px 0',borderTop:'1px solid #1d4532',fontFamily:'sans-serif',fontSize:11,color:'#d8f8e1'}}>
-                  <span style={{overflowWrap:'anywhere'}}>{p.name}<div style={{fontSize:10,color:'#87ba9b'}}>{p.code}</div></span>
+                {productosRafa.map(p=><div key={p.code+'-'+p.neto} style={{display:'grid',gridTemplateColumns:'minmax(160px,1fr) 50px 90px 100px',gap:5,alignItems:'center',padding:'8px 0',borderTop:'1px solid #1d4532',fontFamily:'sans-serif',fontSize:11,color:'#d8f8e1'}}>
+                  <span style={{overflowWrap:'normal',wordBreak:'normal',lineHeight:1.5}}>{p.name}<div style={{fontSize:10,color:'#87ba9b'}}>{p.code}</div></span>
                   <span>{p.qty}</span>
                   <span>{fmt(p.qty?p.neto/p.qty:0)}</span>
                   <strong>{fmt(p.neto)}</strong>
