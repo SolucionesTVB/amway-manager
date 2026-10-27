@@ -23,22 +23,32 @@ function imageRows(orders,summary,mode) {
 }
 async function pngReport(orders,summary,mode,group){
   const rows=imageRows(orders,summary,mode);
-  const width=1080, pad=64, rowH=106;
-  const height=Math.max(570,350+rows.length*rowH);
-  if(height>16000) throw new Error('Demasiados productos para una sola imagen');
-  const wrap=(value,max=54)=>{const words=String(value||'').split(/\s+/);const lines=[''];for(const w of words){let i=lines.length-1;if((lines[i]+' '+w).trim().length>max){lines.push(w)}else lines[i]=(lines[i]+' '+w).trim()}return lines.slice(0,2)};
-  const content=rows.map((r,i)=>{
-    const y=225+i*rowH;const name=wrap(r.name);
-    return '<rect x="50" y="'+(y-28)+'" width="980" height="98" rx="12" fill="'+(i%2?'#f2f7f3':'#ffffff')+'"/>'+
-    name.map((v,j)=>'<text x="72" y="'+(y+j*25)+'" font-size="24" font-weight="700" fill="#163a25">'+xml(v)+'</text>').join('')+
-    '<text x="72" y="'+(y+55)+'" font-size="19" fill="#506958">'+xml(r.detail)+'</text>'+
-    '<text x="1008" y="'+(y+25)+'" font-size="23" text-anchor="end" font-weight="700" fill="#163a25">'+xml(r.amount)+'</text>';
-  }).join('');
-  const foot=height-118;
-  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'" viewBox="0 0 '+width+' '+height+'"><rect width="100%" height="100%" fill="#ffffff"/><rect width="1080" height="154" fill="#163a25"/><text x="64" y="67" font-size="36" font-weight="700" fill="#ffffff">AMWAY MANAGER CR</text><text x="64" y="115" font-size="25" fill="#d2ead7">'+(mode==='cliente'?'PEDIDO DEL CLIENTE':'PEDIDO PARA RAFA')+'</text><text x="64" y="184" font-size="20" fill="#506958">Referencia: '+xml(group.slice(0,8).toUpperCase())+'  ·  '+xml(new Date().toLocaleDateString('es-CR'))+'</text>'+content+'<line x1="64" y1="'+(foot-25)+'" x2="1016" y2="'+(foot-25)+'" stroke="#c8d9cb" stroke-width="2"/><text x="64" y="'+(foot+28)+'" font-size="26" font-weight="700" fill="#163a25">'+(mode==='cliente'?'TOTAL A PAGAR':'NETO A PAGAR A RAFA')+'</text><text x="1016" y="'+(foot+28)+'" font-size="30" text-anchor="end" font-weight="700" fill="#163a25">'+xml(money(mode==='cliente'?summary.total:summary.neto))+'</text></svg>';
-  return sharp(Buffer.from(svg)).png().toBuffer();
+  const width=1080, rowH=132, perPage=45;
+  const pages=[];
+  for(let offset=0;offset<rows.length||offset===0;offset+=perPage){
+    const batch=rows.slice(offset,offset+perPage);
+    const height=Math.max(560,330+batch.length*rowH);
+    const wrap=(value,max=40)=>{
+      const words=String(value||'').split(/\s+/),lines=[''];
+      for(const word of words){const i=lines.length-1;if((lines[i]+' '+word).trim().length>max)lines.push(word);else lines[i]=(lines[i]+' '+word).trim()}
+      return lines.slice(0,2);
+    };
+    const content=batch.map((r,i)=>{
+      const y=235+i*rowH;
+      const lines=wrap(r.name);
+      return '<rect x="48" y="'+(y-35)+'" width="984" height="120" rx="12" fill="'+(i%2?'#f0f6f1':'#ffffff')+'"/>'+
+      lines.map((v,j)=>'<text x="72" y="'+(y+j*31)+'" font-family="DejaVu Sans, Arial, sans-serif" font-size="24" font-weight="bold" fill="#163a25">'+xml(v)+'</text>').join('')+
+      '<text x="72" y="'+(y+70)+'" font-family="DejaVu Sans, Arial, sans-serif" font-size="19" fill="#506958">'+xml(r.detail)+'</text>'+
+      '<text x="1000" y="'+(y+100)+'" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" text-anchor="end" font-weight="bold" fill="#163a25">'+xml(r.amount)+'</text>';
+    }).join('');
+    const foot=height-94;
+    const total=offset+batch.length>=rows.length;
+    const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'"><rect width="100%" height="100%" fill="white"/><rect width="1080" height="150" fill="#163a25"/><g font-family="DejaVu Sans, Arial, sans-serif"><text x="64" y="65" font-size="35" font-weight="bold" fill="white">AMWAY MANAGER CR</text><text x="64" y="113" font-size="25" fill="#d2ead7">'+(mode==='cliente'?'PEDIDO DEL CLIENTE':'PEDIDO PARA RAFA')+'</text><text x="64" y="185" font-size="20" fill="#506958">Referencia: '+xml(group.slice(0,8).toUpperCase())+' · '+xml(new Date().toLocaleDateString('es-CR'))+'</text>'+content+(total?'<line x1="64" y1="'+(foot-32)+'" x2="1016" y2="'+(foot-32)+'" stroke="#c8d9cb" stroke-width="2"/><text x="64" y="'+(foot+12)+'" font-size="25" font-weight="bold" fill="#163a25">'+(mode==='cliente'?'TOTAL A PAGAR':'NETO A PAGAR A RAFA')+'</text><text x="1016" y="'+(foot+12)+'" font-size="29" text-anchor="end" font-weight="bold" fill="#163a25">'+xml(money(mode==='cliente'?summary.total:summary.neto))+'</text>':'')+'</g></svg>';
+    pages.push(await sharp(Buffer.from(svg)).png().toBuffer());
+  }
+  if(pages.length!==1)throw new Error('El pedido excede una imagen. Divida la selección en grupos más pequeños.');
+  return pages[0];
 }
-
 
 const money = n => 'CRC ' + Math.round(Number(n) || 0).toLocaleString('es-CR');
 const esc = s => String(s ?? '').replace(/[\\()]/g, m => '\\' + m).replace(/[\r\n]+/g,' ').replace(/[^\x20-\xFF]/g, '?');
