@@ -238,7 +238,7 @@ export default function Orders({showToast}) {
       }else{
         const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove()
         setTimeout(()=>URL.revokeObjectURL(url),5000)
-        window.open('https://web.whatsapp.com/','_blank');showToast('Imagen PNG descargada. Adjuntala como foto en WhatsApp')
+        showToast('Imagen PNG descargada para compartir como foto')
       }
     }catch(e){if(e.name!=='AbortError')showToast(e.message||'No se pudo compartir','error')}
   }
@@ -248,7 +248,7 @@ export default function Orders({showToast}) {
       if(!response.ok)throw Error((await response.json()).error||'Error al crear el documento')
       const file=new File([await response.blob()],'pedido-'+o.client_name.replace(/[^a-zA-Z0-9]/g,'-')+'.png',{type:'image/png'})
       if(/Android|iPhone|iPad/i.test(navigator.userAgent)&&navigator.share&&navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Pedido de '+o.client_name})
-      else {const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);window.open('https://web.whatsapp.com/','_blank');showToast('Imagen descargada. Adjuntala como foto al cliente')}
+      else {const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);showToast('Imagen descargada para compartir con el cliente')}
     }catch(e){if(e.name!=='AbortError')showToast(e.message||'Error del documento','error')}
   }
   const activos=orders.filter(o=>!esCerrado(o))
