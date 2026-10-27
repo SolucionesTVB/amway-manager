@@ -12,17 +12,7 @@ const reply = (res, status, data) => res.status(status).json(data);
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') return reply(res,405,{data:null,error:'Método no permitido'});
-  const user = process.env.AMWAY_ADMIN_USER;
-  const pass = process.env.AMWAY_ADMIN_PASSWORD;
-  if (!user || !pass || !process.env.DATABASE_URL) return reply(res,503,{data:null,error:'Sistema pendiente de configuración segura'});
-  const expected = 'Basic ' + Buffer.from(user + ':' + pass).toString('base64');
-  const provided = req.headers.authorization || '';
-  const crypto = await import('node:crypto');
-  const a = Buffer.from(provided), b = Buffer.from(expected);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a,b)) {
-    res.setHeader('WWW-Authenticate','Basic realm="Amway Manager"');
-    return reply(res,401,{data:null,error:'Acceso no autorizado'});
-  }
+  if (!process.env.DATABASE_URL) return reply(res,503,{data:null,error:'Base de datos no configurada'});
 
   const {table,operation='select',columns='*',filters=[],order,ascending=true,limit,single=false,data,upsertOptions={}} = req.body || {};
   if (!Object.hasOwn(tables,table) || !allowedOps.has(operation)) return reply(res,400,{data:null,error:'Tabla u operación inválida'});
