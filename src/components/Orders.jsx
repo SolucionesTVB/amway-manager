@@ -248,13 +248,16 @@ export default function Orders({showToast}) {
       if(!response.ok){const j=await response.json();throw new Error(j.error||'Error creando documento')}
       const blob=await pngFromResponse(response)
       const file=new File([blob],'pedido-amway-'+new Date().toISOString().slice(0,10)+'.png',{type:'image/png'})
-      if(navigator.share && navigator.canShare?.({files:[file]})){
+      if(/Android|iPhone|iPad/i.test(navigator.userAgent) && navigator.share && navigator.canShare?.({files:[file]})){
         await navigator.share({files:[file],title:'Pedido Amway',text:'Pedido de productos con neto a pagar'})
         showToast('Documento preparado para compartir')
+      }else if(navigator.clipboard?.write && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({'image/png':blob})])
+        showToast('Imagen copiada. Abrí WhatsApp y pegala con Cmd+V')
       }else{
         const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove()
         setTimeout(()=>URL.revokeObjectURL(url),5000)
-        showToast('Imagen PNG descargada para compartir como foto')
+        showToast('Imagen descargada para compartir')
       }
     }catch(e){if(e.name!=='AbortError')showToast(e.message||'No se pudo compartir','error')}
   }
@@ -263,7 +266,8 @@ export default function Orders({showToast}) {
       const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:[o.id],mode:'cliente'})})
       if(!response.ok)throw Error((await response.json()).error||'Error al crear el documento')
       const file=new File([await pngFromResponse(response)],'pedido-'+o.client_name.replace(/[^a-zA-Z0-9]/g,'-')+'.png',{type:'image/png'})
-      if(navigator.share&&navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Pedido de '+o.client_name})
+      if(/Android|iPhone|iPad/i.test(navigator.userAgent)&&navigator.share&&navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Pedido de '+o.client_name})
+      else if(navigator.clipboard?.write && window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'image/png':file})]);showToast('Imagen del cliente copiada. Pegala en WhatsApp con Cmd+V')}
       else {const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);showToast('Imagen descargada para compartir con el cliente')}
     }catch(e){if(e.name!=='AbortError')showToast(e.message||'Error del documento','error')}
   }
