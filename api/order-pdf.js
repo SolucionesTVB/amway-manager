@@ -23,31 +23,44 @@ function imageRows(orders,summary,mode) {
 }
 async function pngReport(orders,summary,mode,group){
   const rows=imageRows(orders,summary,mode);
-  const width=1080, rowH=132, perPage=45;
-  const pages=[];
-  for(let offset=0;offset<rows.length||offset===0;offset+=perPage){
-    const batch=rows.slice(offset,offset+perPage);
-    const height=Math.max(560,330+batch.length*rowH);
-    const wrap=(value,max=40)=>{
-      const words=String(value||'').split(/\s+/),lines=[''];
-      for(const word of words){const i=lines.length-1;if((lines[i]+' '+word).trim().length>max)lines.push(word);else lines[i]=(lines[i]+' '+word).trim()}
-      return lines.slice(0,2);
-    };
-    const content=batch.map((r,i)=>{
-      const y=235+i*rowH;
-      const lines=wrap(r.name);
-      return '<rect x="48" y="'+(y-35)+'" width="984" height="120" rx="12" fill="'+(i%2?'#f0f6f1':'#ffffff')+'"/>'+
-      lines.map((v,j)=>'<text x="72" y="'+(y+j*31)+'" font-family="DejaVu Sans, Arial, sans-serif" font-size="24" font-weight="bold" fill="#163a25">'+xml(v)+'</text>').join('')+
-      '<text x="72" y="'+(y+70)+'" font-family="DejaVu Sans, Arial, sans-serif" font-size="19" fill="#506958">'+xml(r.detail)+'</text>'+
-      '<text x="1000" y="'+(y+100)+'" font-family="DejaVu Sans, Arial, sans-serif" font-size="23" text-anchor="end" font-weight="bold" fill="#163a25">'+xml(r.amount)+'</text>';
-    }).join('');
-    const foot=height-94;
-    const total=offset+batch.length>=rows.length;
-    const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'"><rect width="100%" height="100%" fill="white"/><rect width="1080" height="150" fill="#163a25"/><g font-family="DejaVu Sans, Arial, sans-serif"><text x="64" y="65" font-size="35" font-weight="bold" fill="white">AMWAY MANAGER CR</text><text x="64" y="113" font-size="25" fill="#d2ead7">'+(mode==='cliente'?'PEDIDO DEL CLIENTE':'PEDIDO PARA RAFA')+'</text><text x="64" y="185" font-size="20" fill="#506958">Referencia: '+xml(group.slice(0,8).toUpperCase())+' · '+xml(new Date().toLocaleDateString('es-CR'))+'</text>'+content+(total?'<line x1="64" y1="'+(foot-32)+'" x2="1016" y2="'+(foot-32)+'" stroke="#c8d9cb" stroke-width="2"/><text x="64" y="'+(foot+12)+'" font-size="25" font-weight="bold" fill="#163a25">'+(mode==='cliente'?'TOTAL A PAGAR':'NETO A PAGAR A RAFA')+'</text><text x="1016" y="'+(foot+12)+'" font-size="29" text-anchor="end" font-weight="bold" fill="#163a25">'+xml(money(mode==='cliente'?summary.total:summary.neto))+'</text>':'')+'</g></svg>';
-    pages.push(Buffer.from(svg,'utf8'));
-  }
-  if(pages.length!==1)throw new Error('El pedido excede una imagen. Divida la selección en grupos más pequeños.');
-  return pages[0];
+  const width=1080, rowH=124, top=264, bottom=168;
+  if(rows.length>60)throw new Error('Seleccione menos pedidos para que la imagen sea legible');
+  const height=top+Math.max(rows.length,1)*rowH+bottom;
+  const wrap=(value,max=48)=>{
+    const words=String(value||'').split(/\s+/),lines=[''];
+    for(const word of words){
+      const i=lines.length-1;
+      if((lines[i]+' '+word).trim().length>max)lines.push(word);
+      else lines[i]=(lines[i]+' '+word).trim();
+    }
+    return lines.slice(0,2);
+  };
+  const items=rows.map((r,i)=>{
+    const y=top+i*rowH;
+    const lines=wrap(r.name);
+    return '<rect x="48" y="'+y+'" width="984" height="112" rx="14" fill="'+(i%2?'#f2f6f2':'#f8faf8')+'"/>'+
+      '<rect x="48" y="'+y+'" width="6" height="112" rx="3" fill="#44845b"/>'+
+      lines.map((v,j)=>'<text x="78" y="'+(y+33+j*27)+'" font-size="24" font-weight="700" fill="#153b28">'+xml(v)+'</text>').join('')+
+      '<text x="78" y="'+(y+91)+'" font-size="18" fill="#52685b">'+xml(r.detail)+'</text>'+
+      '<text x="1004" y="'+(y+39)+'" text-anchor="end" font-size="24" font-weight="700" fill="#153b28">'+xml(r.amount)+'</text>';
+  }).join('');
+  const footerY=top+Math.max(rows.length,1)*rowH+20;
+  const totalLabel=mode==='cliente'?'TOTAL A PAGAR':'NETO A PAGAR A RAFA';
+  const totalValue=money(mode==='cliente'?summary.total:summary.neto);
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'" viewBox="0 0 '+width+' '+height+'">'+
+    '<rect width="1080" height="'+height+'" fill="#ffffff"/>'+
+    '<rect width="1080" height="170" fill="#143825"/>'+
+    '<rect x="48" y="44" width="8" height="79" rx="4" fill="#8ed6a4"/>'+
+    '<g font-family="Arial, Helvetica, sans-serif">'+
+    '<text x="82" y="80" font-size="23" font-weight="700" letter-spacing="3" fill="#b6d9bf">AMWAY MANAGER CR</text>'+
+    '<text x="82" y="129" font-size="36" font-weight="700" fill="#ffffff">'+(mode==='cliente'?'PEDIDO DEL CLIENTE':'PEDIDO PARA RAFA')+'</text>'+
+    '<text x="56" y="216" font-size="21" fill="#506858">REFERENCIA  '+xml(group.slice(0,8).toUpperCase())+'   ·   '+xml(new Date().toLocaleDateString('es-CR'))+'</text>'+
+    items+
+    '<rect x="48" y="'+footerY+'" width="984" height="112" rx="16" fill="#143825"/>'+
+    '<text x="78" y="'+(footerY+48)+'" font-size="22" font-weight="700" fill="#c5e2cd">'+totalLabel+'</text>'+
+    '<text x="1002" y="'+(footerY+76)+'" text-anchor="end" font-size="38" font-weight="700" fill="#ffffff">'+xml(totalValue)+'</text>'+
+    '</g></svg>';
+  return Buffer.from(svg,'utf8');
 }
 
 const money = n => 'CRC ' + Math.round(Number(n) || 0).toLocaleString('es-CR');
