@@ -93,20 +93,10 @@ class QB {
       }
       if (this._head && this._count) operation = 'count'
 
-      let authorization = sessionStorage.getItem('amway_auth') || '';
-      if (!authorization) {
-        const username = window.prompt('Usuario de Amway Manager');
-        const password = username == null ? null : window.prompt('Contraseña de Amway Manager');
-        if (username == null || password == null) return resolve({ data: null, error: 'Acceso cancelado' });
-        authorization = 'Basic ' + btoa(unescape(encodeURIComponent(username + ':' + password)));
-        sessionStorage.setItem('amway_auth', authorization);
-      }
-
       const response = await fetch('/api/db', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authorization
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           table: this.table,
@@ -123,7 +113,6 @@ class QB {
       })
 
       const payload = await response.json();
-      if (response.status === 401) sessionStorage.removeItem('amway_auth');
 
       if (!response.ok) {
         return resolve({
