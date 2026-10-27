@@ -189,8 +189,8 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
           <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
             <div style={{display:'flex',gap:8}}>
               <button onClick={()=>setEditing(o)} style={{display:'flex',alignItems:'center',gap:6,background:'#166534',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Editar pedido</button>
-              <button onClick={()=>sharePdf([o])} style={{background:'#25D366',color:'#103b24',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:700}}>Compartir PDF por WhatsApp</button>
-              <button onClick={()=>downloadPdf([o])} style={{background:'#1e40af',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:600}}>PDF Amway</button>
+              <button onClick={()=>sharePdf([o])} style={{background:'#25D366',color:'#103b24',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:700}}>Compartir documento por WhatsApp</button>
+              <button onClick={()=>downloadPdf([o])} style={{background:'#1e40af',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:600}}>Descargar documento</button>
               <button onClick={()=>openWhatsApp([o])} style={{display:'flex',alignItems:'center',gap:6,background:'#25D366',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Enviar a Amway</button>
             </div>
             <button onClick={()=>deleteOrder(o.id)} style={{...btn.danger,fontSize:13,padding:'8px 16px'}}>Eliminar</button>
@@ -266,10 +266,10 @@ export default function Orders({showToast}) {
               </div>
             ))}
           </div>
-          <button onClick={()=>sharePdf(selectedOrders)} style={{width:'100%',background:'#25D366',border:'none',borderRadius:10,color:'#103b24',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Compartir PDF por WhatsApp (solo neto a pagar)</button>
-          <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1e40af',border:'none',borderRadius:10,color:'white',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Generar PDF para Amway (sin ganancia)</button>
+          <button onClick={()=>sharePdf(selectedOrders)} style={{width:'100%',background:'#25D366',border:'none',borderRadius:10,color:'#103b24',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Compartir documento por WhatsApp</button>
+          <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1e40af',border:'none',borderRadius:10,color:'white',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Descargar pedido para Amway</button>
           <button onClick={sendSelected} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#25D366',color:'white',border:'none',borderRadius:10,padding:'14px',cursor:'pointer',fontSize:16,fontFamily:'sans-serif',fontWeight:700}}>
-            Enviar pedidos seleccionados a Amway por WhatsApp
+            Enviar pedido por WhatsApp
           </button>
         </div>
       ):(
