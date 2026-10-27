@@ -178,9 +178,9 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
           </div>
           <div style={{marginBottom:14,padding:12,border:'1px solid #2d4a2d',borderRadius:8}}>
             <button onClick={loadHistory} style={{background:'transparent',border:'none',color:'#9dc89a',fontWeight:700,cursor:'pointer',padding:0}}>
-              {historyLoading?'Cargando historial...':'Ver historial de PDF y ganancia'}
+              {historyLoading?'Cargando historial...':'Ver historial de documentos y ganancia'}
             </button>
-            {history?.length===0&&<div style={{fontSize:12,color:'#6b9e6b',marginTop:8}}>Aún no se ha generado un PDF para este pedido.</div>}
+            {history?.length===0&&<div style={{fontSize:12,color:'#6b9e6b',marginTop:8}}>Aún no se ha generado un documento para este pedido.</div>}
             {history?.map(h=><div key={h.id} style={{marginTop:10,paddingTop:9,borderTop:'1px solid #2d4a2d',fontSize:12,color:'#9dc89a',fontFamily:'sans-serif'}}>
               <div>{new Date(h.created_at).toLocaleString('es-CR')} · Referencia {h.report_group.slice(0,8).toUpperCase()}</div>
               <div>Venta: <strong>{fmt(h.total_ivai)}</strong> · Ganancia guardada: <strong>{fmt(h.ganancia)}</strong> · Neto Amway: <strong>{fmt(h.neto_pagar)}</strong></div>
@@ -218,12 +218,12 @@ export default function Orders({showToast}) {
     if(ordersToSend.length===0){showToast('Selecciona al menos un pedido','error');return}
     try{
       const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:ordersToSend.map(o=>o.id)})})
-      if(!response.ok){const error=await response.json();throw new Error(error.error||'Error creando PDF')}
+      if(!response.ok){const error=await response.json();throw new Error(error.error||'Error creando imagen')}
       const blob=await response.blob();const url=URL.createObjectURL(blob)
-      const a=document.createElement('a');a.href=url;a.download='pedido-amway-'+new Date().toISOString().slice(0,10)+'.pdf';document.body.appendChild(a);a.click();a.remove()
+      const a=document.createElement('a');a.href=url;a.download='pedido-amway-'+new Date().toISOString().slice(0,10)+'.png';document.body.appendChild(a);a.click();a.remove()
       setTimeout(()=>URL.revokeObjectURL(url),5000)
-      showToast('PDF generado y cálculo guardado en historial')
-    }catch(error){showToast(error.message||'Error al generar PDF','error')}
+      showToast('Imagen generada y cálculo guardado en historial')
+    }catch(error){showToast(error.message||'Error al generar imagen','error')}
   }
   const sharePdf=async(ordersToSend)=>{
     if(!ordersToSend.length){showToast('Selecciona al menos un pedido','error');return}
@@ -231,14 +231,14 @@ export default function Orders({showToast}) {
       const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:ordersToSend.map(o=>o.id)})})
       if(!response.ok){const j=await response.json();throw new Error(j.error||'Error creando documento')}
       const blob=await response.blob()
-      const file=new File([blob],'pedido-amway-'+new Date().toISOString().slice(0,10)+'.pdf',{type:'application/pdf'})
+      const file=new File([blob],'pedido-amway-'+new Date().toISOString().slice(0,10)+'.png',{type:'image/png'})
       if(navigator.share && navigator.canShare?.({files:[file]})){
         await navigator.share({files:[file],title:'Pedido Amway',text:'Pedido de productos con neto a pagar'})
         showToast('Documento preparado para compartir')
       }else{
         const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove()
         setTimeout(()=>URL.revokeObjectURL(url),5000)
-        showToast('PDF descargado: adjúntalo en WhatsApp como documento')
+        showToast('Imagen descargada: adjúntalo en WhatsApp como foto')
       }
     }catch(e){if(e.name!=='AbortError')showToast(e.message||'No se pudo compartir','error')}
   }
@@ -246,7 +246,7 @@ export default function Orders({showToast}) {
     try{
       const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:[o.id],mode:'cliente'})})
       if(!response.ok)throw Error((await response.json()).error||'Error al crear el documento')
-      const file=new File([await response.blob()],'pedido-'+o.client_name.replace(/[^a-zA-Z0-9]/g,'-')+'.pdf',{type:'application/pdf'})
+      const file=new File([await response.blob()],'pedido-'+o.client_name.replace(/[^a-zA-Z0-9]/g,'-')+'.png',{type:'image/png'})
       if(navigator.share&&navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Pedido de '+o.client_name})
       else {const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);showToast('Pedido descargado, adjúntalo al WhatsApp del cliente')}
     }catch(e){if(e.name!=='AbortError')showToast(e.message||'Error del documento','error')}
@@ -290,7 +290,7 @@ export default function Orders({showToast}) {
                 </div>)}
               </div>
               <button onClick={()=>sharePdf(selectedOrders)} style={{width:'100%',background:'#25D366',color:'#103b24',border:0,borderRadius:8,padding:11,fontWeight:700,cursor:'pointer'}}>Compartir con Rafa</button>
-              <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1a3d29',color:'#dcfce7',border:'1px solid #236b45',borderRadius:8,padding:10,marginTop:8,cursor:'pointer'}}>Descargar PDF de Rafa</button>
+              <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1a3d29',color:'#dcfce7',border:'1px solid #236b45',borderRadius:8,padding:10,marginTop:8,cursor:'pointer'}}>Descargar imagen de Rafa</button>
             </div>
             <div style={{background:'#111d31',border:'1px solid #244978',borderRadius:12,padding:16}}>
               <strong style={{color:'#dbeafe'}}>2. Envío a cada cliente</strong>
