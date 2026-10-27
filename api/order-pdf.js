@@ -30,14 +30,41 @@ function buildPages(orders,summary,group,mode='rafa') {
   const next=()=>{pages.push(text);start()};
   const row=(description,right,{bold=false,indent=0}={})=>{if(y<76)next();text+=line(description,45+indent,y,10,bold);text+=line(right,425,y,10,bold);y-=18};
   start();
-  for(const o of orders) {
-    if(y<145)next();
-    text+=line('Cliente: '+o.client_name+'  |  Periodo: '+o.period,45,y,11,true);y-=22;
-    for(const item of o.order_items) {
-      const desc=(item.product_name||item.product_code||'Producto').slice(0,50);
-      row(desc+'  x'+item.qty,money(mode==='cliente'?item.total:Number(item.total)*(1-0.30/1.13)),{indent:8});
+  if(mode==='rafa') {
+    // Consolidar por codigo, sin nombres ni datos de clientes.
+    const productos=new Map();
+    for(const o of orders) for(const item of o.order_items) {
+      const code=String(item.product_code||'');
+      const key=code+'|'+String(item.unit_price);
+      const prev=productos.get(key)||{name:item.product_name||'Producto',code,qty:0,neto:0};
+      prev.qty+=Number(item.qty)||0;
+      prev.neto+=(Number(item.total)||0)*(1-0.30/1.13);
+      productos.set(key,prev);
     }
-    y-=8;
+    text+=line('PRODUCTO / CODIGO',45,y,9,true);
+    text+=line('CANT.',338,y,9,true);
+    text+=line('PRECIO NETO',398,y,9,true);
+    text+=line('SUBTOTAL',493,y,9,true);y-=22;
+    for(const p of [...productos.values()].sort((a,b)=>a.name.localeCompare(b.name))) {
+      if(y<85)next();
+      text+=line(String(p.name).slice(0,45),45,y,9);
+      y-=13;
+      text+=line('Codigo: '+p.code,55,y,8);
+      text+=line(String(p.qty),344,y,9);
+      text+=line(money(p.qty?p.neto/p.qty:0),395,y,9);
+      text+=line(money(p.neto),488,y,9);
+      y-=23;
+    }
+  } else {
+    for(const o of orders) {
+      if(y<145)next();
+      text+=line('Cliente: '+o.client_name+'  |  Periodo: '+o.period,45,y,11,true);y-=22;
+      for(const item of o.order_items) {
+        const desc=(item.product_name||item.product_code||'Producto').slice(0,50);
+        row(desc+'  x'+item.qty,money(item.total),{indent:8});
+      }
+      y-=8;
+    }
   }
   if(y<180)next();
   text+='0.7 0.7 0.7 RG 45 '+y+' m 550 '+y+' l S\n';y-=25;
