@@ -95,7 +95,6 @@ function buildWhatsAppMessage(orders) {
   msg += `Total pedido IVAI: ${fmt(calc.totalIVAI)}\n`
   msg += `Subtotal sin impuesto: ${fmt(calc.sinImpuesto)}\n`
   msg += `Impuestos (13%): ${fmt(calc.impuestos)}\n`
-  msg += `Ganancia (30%): ${fmt(calc.ganancia)}\n`
   msg += `*Total pagar a Rafa: ${fmt(calc.pagarRafa)}*\n`
   msg += '\n'
   msg += 'Por favor preparar este pedido. Gracias.\n'
@@ -104,7 +103,7 @@ function buildWhatsAppMessage(orders) {
 
   return msg
 }
-function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing,downloadPdf}) {
+function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing,downloadPdf,sharePdf}) {
   const [history,setHistory]=useState(null)
   const [historyLoading,setHistoryLoading]=useState(false)
   const loadHistory=async()=>{
@@ -190,6 +189,7 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
           <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
             <div style={{display:'flex',gap:8}}>
               <button onClick={()=>setEditing(o)} style={{display:'flex',alignItems:'center',gap:6,background:'#166534',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Editar pedido</button>
+              <button onClick={()=>sharePdf([o])} style={{background:'#25D366',color:'#103b24',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:700}}>Compartir PDF por WhatsApp</button>
               <button onClick={()=>downloadPdf([o])} style={{background:'#1e40af',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:600}}>PDF Amway</button>
               <button onClick={()=>openWhatsApp([o])} style={{display:'flex',alignItems:'center',gap:6,background:'#25D366',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Enviar a Amway</button>
             </div>
@@ -226,6 +226,23 @@ export default function Orders({showToast}) {
       showToast('PDF generado y cálculo guardado en historial')
     }catch(error){showToast(error.message||'Error al generar PDF','error')}
   }
+  const sharePdf=async(ordersToSend)=>{
+    if(!ordersToSend.length){showToast('Selecciona al menos un pedido','error');return}
+    try{
+      const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:ordersToSend.map(o=>o.id)})})
+      if(!response.ok){const j=await response.json();throw new Error(j.error||'Error creando documento')}
+      const blob=await response.blob()
+      const file=new File([blob],'pedido-amway-'+new Date().toISOString().slice(0,10)+'.pdf',{type:'application/pdf'})
+      if(navigator.share && navigator.canShare?.({files:[file]})){
+        await navigator.share({files:[file],title:'Pedido Amway',text:'Pedido de productos con neto a pagar'})
+        showToast('Documento preparado para compartir')
+      }else{
+        const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove()
+        setTimeout(()=>URL.revokeObjectURL(url),5000)
+        showToast('PDF descargado: adjúntalo en WhatsApp como documento')
+      }
+    }catch(e){if(e.name!=='AbortError')showToast(e.message||'No se pudo compartir','error')}
+  }
   const sendSelected=()=>openWhatsApp(orders.filter(o=>selected.has(o.id)))
   const activos=orders.filter(o=>!esCerrado(o))
   const archivados=orders.filter(o=>esCerrado(o))
@@ -233,7 +250,7 @@ export default function Orders({showToast}) {
   const selectedOrders=orders.filter(o=>selected.has(o.id))
   const totalSelIVAI=selectedOrders.reduce((s,o)=>s+num(o.total),0)
   const calcSel=totalSelIVAI>0?calcular(totalSelIVAI):null
-  const cardProps={expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing,downloadPdf}
+  const cardProps={expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing,downloadPdf,sharePdf}
   return (
     <div style={{padding:28}} className="fade-in">
       <h1 style={{fontSize:24,color:'#e8f5e9',margin:'0 0 4px'}}>Pedidos</h1>
@@ -249,6 +266,7 @@ export default function Orders({showToast}) {
               </div>
             ))}
           </div>
+          <button onClick={()=>sharePdf(selectedOrders)} style={{width:'100%',background:'#25D366',border:'none',borderRadius:10,color:'#103b24',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Compartir PDF por WhatsApp (solo neto a pagar)</button>
           <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1e40af',border:'none',borderRadius:10,color:'white',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Generar PDF para Amway (sin ganancia)</button>
           <button onClick={sendSelected} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#25D366',color:'white',border:'none',borderRadius:10,padding:'14px',cursor:'pointer',fontSize:16,fontFamily:'sans-serif',fontWeight:700}}>
             Enviar pedidos seleccionados a Amway por WhatsApp
