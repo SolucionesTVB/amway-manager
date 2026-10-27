@@ -103,7 +103,7 @@ function buildWhatsAppMessage(orders) {
 
   return msg
 }
-function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing,downloadPdf,sharePdf}) {
+function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,setEditing,downloadPdf,sharePdf,clientPdf}) {
   const [history,setHistory]=useState(null)
   const [historyLoading,setHistoryLoading]=useState(false)
   const loadHistory=async()=>{
@@ -189,9 +189,8 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
           <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
             <div style={{display:'flex',gap:8}}>
               <button onClick={()=>setEditing(o)} style={{display:'flex',alignItems:'center',gap:6,background:'#166534',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Editar pedido</button>
-              <button onClick={()=>sharePdf([o])} style={{background:'#25D366',color:'#103b24',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:700}}>Compartir pedido a Amway por WhatsApp</button>
-              <button onClick={()=>downloadPdf([o])} style={{background:'#1e40af',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:600}}>PDF para Amway · Neto a pagar</button>
-              <button onClick={()=>openWhatsApp([o])} style={{display:'flex',alignItems:'center',gap:6,background:'#25D366',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Enviar a Amway</button>
+              <button onClick={()=>sharePdf([o])} style={{background:'#25D366',color:'#103b24',border:0,borderRadius:8,padding:'9px 14px',cursor:'pointer',fontWeight:700}}>Enviar a Rafa</button>
+              <button onClick={()=>clientPdf(o)} style={{background:'#2563eb',color:'white',border:0,borderRadius:8,padding:'9px 14px',cursor:'pointer',fontWeight:700}}>Pedido del cliente</button>
             </div>
             <button onClick={()=>deleteOrder(o.id)} style={{...btn.danger,fontSize:13,padding:'8px 16px'}}>Eliminar</button>
           </div>
@@ -243,34 +242,50 @@ export default function Orders({showToast}) {
       }
     }catch(e){if(e.name!=='AbortError')showToast(e.message||'No se pudo compartir','error')}
   }
-  const sendSelected=()=>openWhatsApp(orders.filter(o=>selected.has(o.id)))
+  const clientPdf=async(o)=>{
+    try{
+      const response=await fetch('/api/order-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({orderIds:[o.id],mode:'cliente'})})
+      if(!response.ok)throw Error((await response.json()).error||'Error al crear el documento')
+      const file=new File([await response.blob()],'pedido-'+o.client_name.replace(/[^a-zA-Z0-9]/g,'-')+'.pdf',{type:'application/pdf'})
+      if(navigator.share&&navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:'Pedido de '+o.client_name})
+      else {const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);showToast('Pedido descargado, adjúntalo al WhatsApp del cliente')}
+    }catch(e){if(e.name!=='AbortError')showToast(e.message||'Error del documento','error')}
+  }
   const activos=orders.filter(o=>!esCerrado(o))
   const archivados=orders.filter(o=>esCerrado(o))
   const visible=activos.filter(o=>{if(filter==='pendiente_pago')return !o.pagado_rafa;if(filter==='pendiente_entrega')return !o.entregado_cliente;return true}).filter(o=>search===''||o.client_name.toLowerCase().includes(search.toLowerCase()))
   const selectedOrders=orders.filter(o=>selected.has(o.id))
   const totalSelIVAI=selectedOrders.reduce((s,o)=>s+num(o.total),0)
   const calcSel=totalSelIVAI>0?calcular(totalSelIVAI):null
-  const cardProps={expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,openWhatsApp,setEditing,downloadPdf,sharePdf}
+  const cardProps={expanded,setExpanded,selected,toggleSelect,toggle,deleteOrder,setEditing,downloadPdf,sharePdf,clientPdf}
   return (
     <div style={{padding:28}} className="fade-in">
       <h1 style={{fontSize:24,color:'#e8f5e9',margin:'0 0 4px'}}>Pedidos</h1>
-      <p style={{color:'#6b9e6b',margin:'0 0 20px',fontFamily:'sans-serif',fontSize:14}}>Marca los pedidos con el checkbox y envialos a Amway por WhatsApp</p>
+      <p style={{color:'#6b9e6b',margin:'0 0 20px',fontFamily:'sans-serif',fontSize:14}}>Seleccioná pedidos para Rafa; cada cliente recibe únicamente su propio pedido</p>
       {calcSel?(
         <div style={{background:'#111d13',border:'1px solid #2d4a2d',borderRadius:12,padding:18,marginBottom:20}}>
           <div style={{color:'#9dc89a',fontSize:12,fontFamily:'sans-serif',fontWeight:700,marginBottom:12,textTransform:'uppercase',letterSpacing:1}}>Resumen — {selected.size} pedido{selected.size!==1?'s':''} seleccionado{selected.size!==1?'s':''}</div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10,marginBottom:16}}>
-            {[{label:'Cobros a clientes',value:calcSel.totalIVAI,color:'#9dc89a'},{label:'Sin impuesto',value:calcSel.sinImpuesto,color:'#9dc89a'},{label:'Impuestos (13%)',value:calcSel.impuestos,color:'#f59e0b'},{label:'Mi ganancia',value:calcSel.ganancia,color:'#34d399'},{label:'Pago a Amway (Rafa)',value:calcSel.pagarRafa,color:'#4ade80'}].map(r=>(
-              <div key={r.label} style={{background:'#0d1710',borderRadius:8,padding:'10px 14px'}}>
-                <div style={{color:'#4a7a4a',fontSize:11,fontFamily:'sans-serif',marginBottom:4}}>{r.label}</div>
-                <div style={{color:r.color,fontSize:15,fontWeight:'bold',fontFamily:'sans-serif'}}>{fmt(r.value)}</div>
-              </div>
-            ))}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:12}}>
+            <div style={{background:'#10251b',border:'1px solid #236b45',borderRadius:12,padding:16}}>
+              <strong style={{color:'#d8f8e1'}}>1. Envío de pedido a Rafa</strong>
+              <div style={{color:'#87ba9b',fontSize:12,marginTop:6}}>Productos y precio neto a pagar</div>
+              <div style={{fontSize:24,fontWeight:700,color:'#4ade80',margin:'12px 0'}}>{fmt(calcSel.pagarRafa)}</div>
+              <button onClick={()=>sharePdf(selectedOrders)} style={{width:'100%',background:'#25D366',color:'#103b24',border:0,borderRadius:8,padding:11,fontWeight:700,cursor:'pointer'}}>Compartir con Rafa</button>
+              <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1a3d29',color:'#dcfce7',border:'1px solid #236b45',borderRadius:8,padding:10,marginTop:8,cursor:'pointer'}}>Descargar PDF de Rafa</button>
+            </div>
+            <div style={{background:'#111d31',border:'1px solid #244978',borderRadius:12,padding:16}}>
+              <strong style={{color:'#dbeafe'}}>2. Envío a cada cliente</strong>
+              <div style={{color:'#9cb9e8',fontSize:12,marginTop:6}}>Cada cliente recibe sus productos y precio de venta</div>
+              <div style={{fontSize:24,fontWeight:700,color:'#93c5fd',margin:'12px 0'}}>{fmt(calcSel.totalIVAI)}</div>
+              {selectedOrders.map(o=><button key={o.id} onClick={()=>clientPdf(o)} style={{width:'100%',background:'#1d4ed8',color:'white',border:0,borderRadius:8,padding:10,marginTop:7,cursor:'pointer',textAlign:'left'}}>{o.client_name} · {fmt(o.total)} · Compartir</button>)}
+            </div>
+            <div style={{background:'#28200f',border:'1px solid #765d28',borderRadius:12,padding:16}}>
+              <strong style={{color:'#fde68a'}}>3. Mi ganancia</strong>
+              <div style={{color:'#e5c98e',fontSize:12,marginTop:6}}>Solo control interno · 30% del subtotal sin IVA</div>
+              <div style={{fontSize:24,fontWeight:700,color:'#fbbf24',margin:'12px 0'}}>{fmt(calcSel.ganancia)}</div>
+              {selectedOrders.map(o=><div key={o.id} style={{display:'flex',justifyContent:'space-between',gap:8,padding:'7px 0',borderBottom:'1px solid #554321',fontSize:12,color:'#fde68a'}}><span>{o.client_name}</span><strong>{fmt(calcular(o.total).ganancia)}</strong></div>)}
+            </div>
           </div>
-          <button onClick={()=>sharePdf(selectedOrders)} style={{width:'100%',background:'#25D366',border:'none',borderRadius:10,color:'#103b24',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Compartir documento por WhatsApp</button>
-          <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1e40af',border:'none',borderRadius:10,color:'white',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Descargar PDF para Amway · Neto a pagar</button>
-          <button onClick={sendSelected} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#25D366',color:'white',border:'none',borderRadius:10,padding:'14px',cursor:'pointer',fontSize:16,fontFamily:'sans-serif',fontWeight:700}}>
-            Enviar pedido por WhatsApp
-          </button>
         </div>
       ):(
         <div style={{background:'#111d13',border:'2px dashed #2d4a2d',borderRadius:12,padding:16,marginBottom:20,textAlign:'center'}}>
