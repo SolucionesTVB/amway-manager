@@ -153,11 +153,11 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
           ))}
           <div style={{marginTop:12,marginBottom:16,borderRadius:8,overflow:'hidden',border:'1px solid #2d4a2d'}}>
             {[
-              {label:'Total pedido IVAI',value:calc.totalIVAI,color:'#9dc89a',bold:false},
+              {label:'Cobro al cliente (IVA incluido)',value:calc.totalIVAI,color:'#9dc89a',bold:false},
               {label:'Total sin impuesto',value:calc.sinImpuesto,color:'#9dc89a',bold:false},
               {label:'Impuestos (13%)',value:calc.impuestos,color:'#f59e0b',bold:false},
-              {label:'Ganancia (30%)',value:calc.ganancia,color:'#34d399',bold:false},
-              {label:'Total pagar a Rafa',value:calc.pagarRafa,color:'#4ade80',bold:true},
+              {label:'Mi ganancia (30% sin IVA)',value:calc.ganancia,color:'#34d399',bold:false},
+              {label:'Pago a Amway (Rafa)',value:calc.pagarRafa,color:'#4ade80',bold:true},
             ].map((row,i)=>(
               <div key={i} style={{display:'flex',justifyContent:'space-between',padding:'10px 16px',background:row.bold?'#1a4a1a':i%2===0?'#0d1710':'#111d13',borderTop:i>0?'1px solid #1e3a1e':'none'}}>
                 <span style={{color:row.bold?'#e8f5e9':'#9dc89a',fontFamily:'sans-serif',fontSize:13,fontWeight:row.bold?700:400}}>{row.label}</span>
@@ -189,8 +189,8 @@ function PedidoCard({o,expanded,setExpanded,selected,toggleSelect,toggle,deleteO
           <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
             <div style={{display:'flex',gap:8}}>
               <button onClick={()=>setEditing(o)} style={{display:'flex',alignItems:'center',gap:6,background:'#166534',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Editar pedido</button>
-              <button onClick={()=>sharePdf([o])} style={{background:'#25D366',color:'#103b24',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:700}}>Compartir documento por WhatsApp</button>
-              <button onClick={()=>downloadPdf([o])} style={{background:'#1e40af',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:600}}>Descargar documento</button>
+              <button onClick={()=>sharePdf([o])} style={{background:'#25D366',color:'#103b24',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:700}}>Compartir pedido a Amway por WhatsApp</button>
+              <button onClick={()=>downloadPdf([o])} style={{background:'#1e40af',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontWeight:600}}>PDF para Amway · Neto a pagar</button>
               <button onClick={()=>openWhatsApp([o])} style={{display:'flex',alignItems:'center',gap:6,background:'#25D366',color:'white',border:'none',borderRadius:8,padding:'9px 14px',cursor:'pointer',fontSize:13,fontFamily:'sans-serif',fontWeight:600}}>Enviar a Amway</button>
             </div>
             <button onClick={()=>deleteOrder(o.id)} style={{...btn.danger,fontSize:13,padding:'8px 16px'}}>Eliminar</button>
@@ -259,7 +259,7 @@ export default function Orders({showToast}) {
         <div style={{background:'#111d13',border:'1px solid #2d4a2d',borderRadius:12,padding:18,marginBottom:20}}>
           <div style={{color:'#9dc89a',fontSize:12,fontFamily:'sans-serif',fontWeight:700,marginBottom:12,textTransform:'uppercase',letterSpacing:1}}>Resumen — {selected.size} pedido{selected.size!==1?'s':''} seleccionado{selected.size!==1?'s':''}</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10,marginBottom:16}}>
-            {[{label:'Total IVAI',value:calcSel.totalIVAI,color:'#9dc89a'},{label:'Sin impuesto',value:calcSel.sinImpuesto,color:'#9dc89a'},{label:'Impuestos (13%)',value:calcSel.impuestos,color:'#f59e0b'},{label:'Ganancia (30%)',value:calcSel.ganancia,color:'#34d399'},{label:'Total pagar a Rafa',value:calcSel.pagarRafa,color:'#4ade80'}].map(r=>(
+            {[{label:'Cobros a clientes',value:calcSel.totalIVAI,color:'#9dc89a'},{label:'Sin impuesto',value:calcSel.sinImpuesto,color:'#9dc89a'},{label:'Impuestos (13%)',value:calcSel.impuestos,color:'#f59e0b'},{label:'Mi ganancia',value:calcSel.ganancia,color:'#34d399'},{label:'Pago a Amway (Rafa)',value:calcSel.pagarRafa,color:'#4ade80'}].map(r=>(
               <div key={r.label} style={{background:'#0d1710',borderRadius:8,padding:'10px 14px'}}>
                 <div style={{color:'#4a7a4a',fontSize:11,fontFamily:'sans-serif',marginBottom:4}}>{r.label}</div>
                 <div style={{color:r.color,fontSize:15,fontWeight:'bold',fontFamily:'sans-serif'}}>{fmt(r.value)}</div>
@@ -267,7 +267,7 @@ export default function Orders({showToast}) {
             ))}
           </div>
           <button onClick={()=>sharePdf(selectedOrders)} style={{width:'100%',background:'#25D366',border:'none',borderRadius:10,color:'#103b24',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Compartir documento por WhatsApp</button>
-          <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1e40af',border:'none',borderRadius:10,color:'white',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Descargar pedido para Amway</button>
+          <button onClick={()=>downloadPdf(selectedOrders)} style={{width:'100%',background:'#1e40af',border:'none',borderRadius:10,color:'white',padding:14,marginBottom:10,cursor:'pointer',fontSize:15,fontWeight:700}}>Descargar PDF para Amway · Neto a pagar</button>
           <button onClick={sendSelected} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#25D366',color:'white',border:'none',borderRadius:10,padding:'14px',cursor:'pointer',fontSize:16,fontFamily:'sans-serif',fontWeight:700}}>
             Enviar pedido por WhatsApp
           </button>
