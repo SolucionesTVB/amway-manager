@@ -3,7 +3,9 @@ import { neon } from '@neondatabase/serverless';
 const tables = {
   clients: new Set(['id','name','type','phone','created_at']),
   orders: new Set(['id','client_id','client_name','client_type','period','total','entregado_tv','entregado_cliente','pagado_rafa','pagado_tv','created_at']),
-  order_items: new Set(['id','order_id','product_code','product_name','unit_price','qty','total'])
+  order_items: new Set(['id','order_id','product_code','product_name','unit_price','qty','total']),
+  client_reorder_patterns: new Set(['id','client_name','product_code','last_purchase','purchase_count','avg_days_reorder']),
+  product_durations: new Set(['product_code','duration_days'])
 };
 const allowedOps = new Set(['select','count','insert','update','delete','upsert']);
 const q = (id) => '"' + id.replaceAll('"','""') + '"';
@@ -67,9 +69,10 @@ export default async function handler(req, res) {
           let statement='INSERT INTO '+tableSql+' ('+keys.map(q).join(', ')+') VALUES ('+markers.join(', ')+')';
           if(operation==='upsert'){
             const conflict=upsertOptions.onConflict||'id';
-            if(!check(conflict)) throw Error('Conflicto inválido');
-            const editable=keys.filter(k=>k!==conflict);
-            statement+=' ON CONFLICT ('+q(conflict)+') '+(editable.length?'DO UPDATE SET '+editable.map(k=>q(k)+' = EXCLUDED.'+q(k)).join(', '):'DO NOTHING');
+            const conflictCols=String(conflict).split(',').map(s=>s.trim());
+            if(!conflictCols.length || conflictCols.some(col=>!check(col))) throw Error('Conflicto inválido');
+            const editable=keys.filter(k=>!conflictCols.includes(k));
+            statement+=' ON CONFLICT ('+conflictCols.map(q).join(', ')+') '+(editable.length?'DO UPDATE SET '+editable.map(k=>q(k)+' = EXCLUDED.'+q(k)).join(', '):'DO NOTHING');
           }
           result=await sql.query(statement+' RETURNING *',args);
         }
