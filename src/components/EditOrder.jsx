@@ -36,7 +36,7 @@ export default function EditOrder({ order, onClose, onSaved, showToast }) {
     setItems(prev=>prev.map(i=>i.product_code===code?{...i,qty:newQ,total:newQ*i.unit_price}:i))
   }
 
-  const total=items.reduce((s,i)=>s+i.total,0)
+  const total=items.reduce((s,i)=>s+(Number(i.total)||0),0)
   const calc=total>0?calcular(total):null
 
   const handleSave=async()=>{
