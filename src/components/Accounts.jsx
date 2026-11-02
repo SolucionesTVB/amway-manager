@@ -94,7 +94,7 @@ export default function Accounts({ showToast }) {
 
   function getClientData(clientName) {
     const clientOrders  = orders.filter(o => o.client_name.toLowerCase() === clientName.toLowerCase())
-    const totalGastado  = clientOrders.reduce((s, o) => s + o.total, 0)
+    const totalGastado  = clientOrders.reduce((s, o) => s + (Number(o.total) || 0), 0)
     const clientPats    = patterns.filter(p => p.client_name.toLowerCase() === clientName.toLowerCase())
 
     // Productos que necesitan reposición
@@ -117,8 +117,8 @@ export default function Accounts({ showToast }) {
             veces     : 0,
           }
         }
-        productMap[it.product_code].totalQty   += it.qty
-        productMap[it.product_code].totalGasto += it.total
+        productMap[it.product_code].totalQty   += Number(it.qty) || 0
+        productMap[it.product_code].totalGasto += Number(it.total) || 0
         productMap[it.product_code].veces      += 1
       })
     })
